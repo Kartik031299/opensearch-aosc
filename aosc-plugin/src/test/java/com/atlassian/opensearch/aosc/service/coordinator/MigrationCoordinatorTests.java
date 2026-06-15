@@ -513,6 +513,56 @@ public class MigrationCoordinatorTests extends OpenSearchTestCase {
         coordinator.close();
     }
 
+    // ---- Test: out-of-order shard update must not regress the coordinator's recorded phase ----
+    // Reproduces the shard-860 production hang: the worker reaches COMPLETED, then a delayed
+    // COMPLETING (e.g. a late progress tick) arrives. Without the guard it clobbers the snapshot
+    // back to COMPLETING, stranding the completion gate. The guard must drop the stale update.
+
+    public void testAcceptShardUpdateIgnoresOutOfOrderRegression() throws Exception {
+        Map<Integer, AoscMigrationsClusterState.ShardMigrationClusterState> shards = new HashMap<>();
+        shards.put(
+            0,
+            AoscMigrationsClusterState.ShardMigrationClusterState.builder()
+                .phase(ShardPhase.CATCHING_UP)
+                .lastReplayedSeqNo(0L)
+                .backfillCutoffSeqNo(0L)
+                .failure(null)
+                .meta(MigrationMetadata.EMPTY)
+                .build()
+        );
+        AoscMigrationsClusterState.Entry entry = entryWithShards("migration-ooo", CoordinatorPhase.ACTIVE, shards);
+
+        MigrationCoordinator coordinator = new MigrationCoordinator(
+            AoscLogger.create(MigrationCoordinator.class),
+            "migration-ooo",
+            CoordinatorPhase.ACTIVE,
+            entry,
+            mockClient,
+            mockClusterService,
+            mockThreadPool,
+            mockMigrationDocumentService,
+            () -> {}
+        );
+
+        // Shard reaches terminal COMPLETED — recorded by the coordinator.
+        coordinator.acceptShardUpdate(0, ShardProgressDocument.builder().phase(ShardPhase.COMPLETED).build());
+        assertEquals(ShardPhase.COMPLETED, coordinator.shardProgressCache().get(0).phase());
+
+        // A delayed, out-of-order COMPLETING then arrives — must be dropped, not applied.
+        CompletableFuture<Void> stale = coordinator.acceptShardUpdate(
+            0,
+            ShardProgressDocument.builder().phase(ShardPhase.COMPLETING).build()
+        );
+        assertFalse("Dropped update must complete normally (so the worker does not retry)", stale.isCompletedExceptionally());
+        assertEquals(
+            "Out-of-order COMPLETING must not regress the recorded COMPLETED phase",
+            ShardPhase.COMPLETED,
+            coordinator.shardProgressCache().get(0).phase()
+        );
+
+        coordinator.close();
+    }
+
     // ---- Mock helpers ----
 
     @SuppressWarnings("unchecked")

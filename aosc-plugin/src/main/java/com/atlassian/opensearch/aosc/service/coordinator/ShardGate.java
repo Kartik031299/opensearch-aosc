@@ -9,7 +9,6 @@ import com.atlassian.opensearch.aosc.utils.AoscLogger;
 
 import org.opensearch.core.index.shard.ShardId;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -81,25 +80,12 @@ public class ShardGate {
         }
     }
 
-    /** Happy-path phases in progression order. Terminal/interrupt phases excluded. */
-    static final List<ShardPhase> HAPPY_PATH = List.of(
-        ShardPhase.PENDING,
-        ShardPhase.ACQUIRING_LEASE,
-        ShardPhase.BACKFILLING,
-        ShardPhase.REPLAYING,
-        ShardPhase.CONVERGING,
-        ShardPhase.CONVERGED,
-        ShardPhase.CATCHING_UP,
-        ShardPhase.COMPLETING,
-        ShardPhase.COMPLETED
-    );
-
     /** Pre-built checker: accepts any phase at or beyond the given happy-path phase. */
     static Predicate<ShardPhase> atOrBeyond(ShardPhase target) {
-        int targetIdx = HAPPY_PATH.indexOf(target);
+        int targetIdx = target.happyPathOrder();
         if (targetIdx < 0) throw new IllegalArgumentException("Not a happy-path phase: " + target);
         return phase -> {
-            int idx = HAPPY_PATH.indexOf(phase);
+            int idx = phase.happyPathOrder();
             return idx >= 0 && idx >= targetIdx;
         };
     }
@@ -147,7 +133,17 @@ public class ShardGate {
     public void shardReported(ShardId shard, ShardPhase phase, String failureReason) {
         if (future.isDone()) return;
 
-        reported.put(shard, phase);
+        // Monotonic guard: a stale report is a no-op (state unchanged), so drop it and return.
+        // Atomic merge so concurrent reports for the same shard can't race past the check.
+        ShardPhase kept = reported.merge(
+            shard,
+            phase,
+            (existing, incoming) -> incoming.isHappyPathRegressionOf(existing) ? existing : incoming
+        );
+        if (kept != phase) {
+            logger.debug("Gate: ignoring out-of-order phase {} for shard {} (kept {})", phase, shard, kept);
+            return;
+        }
 
         if (phase == ShardPhase.FAILED && failedIsFastFail) {
             logger.debug("Gate: shard {} reported FAILED — completing with SHARD_FAILED", shard);

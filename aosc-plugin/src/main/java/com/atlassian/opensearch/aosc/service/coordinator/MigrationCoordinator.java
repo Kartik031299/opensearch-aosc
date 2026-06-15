@@ -203,10 +203,27 @@ class MigrationCoordinator implements Closeable {
                 new IllegalArgumentException("Unknown shard " + shardId + " for migration " + migrationId)
             );
         }
-        // Record heartbeat for liveness tracking
+        // Record heartbeat first — even a stale update proves the worker is alive.
         livenessChecker.heartbeatReceived(shardIdFor(shardId));
-        // Update in-memory cache with full progress
-        latestShardSnapshots.put(shardId, progress);
+
+        // Monotonic guard: drop a stale update before it corrupts the snapshot, which feeds the
+        // Tier-1 doc, status API, cluster-state write, and the preFill seed for newly-built gates.
+        // Distinct from the gate's own guard: a fresh gate is empty, so only a clean snapshot protects it.
+        ShardProgressDocument applied = latestShardSnapshots.merge(
+            shardId,
+            progress,
+            (existing, incoming) -> incoming.phase().isHappyPathRegressionOf(existing.phase()) ? existing : incoming
+        );
+        if (applied != progress) {
+            logger.debug(
+                "Ignoring out-of-order update for shard {}: {} would regress recorded {}",
+                shardId,
+                progress.phase(),
+                applied.phase()
+            );
+            return CompletableFuture.completedFuture(null);
+        }
+
         // Notify gate immediately
         ShardGate gate = currentGate;
         if (gate != null) {

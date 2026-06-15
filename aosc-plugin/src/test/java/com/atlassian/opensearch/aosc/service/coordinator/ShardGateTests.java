@@ -225,4 +225,37 @@ public class ShardGateTests extends OpenSearchTestCase {
         assertTrue("Both shards terminal should complete gate", gate.isDone());
         assertEquals(ShardGate.Outcome.ALL_REACHED_TARGET, gate.awaitable().get(1, TimeUnit.SECONDS).outcome());
     }
+
+    // 16. REGRESSION REPRO: a stale COMPLETING arriving after COMPLETED must NOT un-satisfy the shard.
+    // Without the monotonic guard this leaves SHARD_0 at COMPLETING, so the gate never fires once
+    // SHARD_1 completes — exactly the production hang (shard 860).
+    public void testOutOfOrderUpdateDoesNotRegressShard() throws Exception {
+        ShardGate gate = new ShardGate(AoscLogger.create(ShardGate.class), Set.of(SHARD_0, SHARD_1), ShardPhase.COMPLETED);
+
+        gate.shardReported(SHARD_0, ShardPhase.COMPLETED, null);
+        assertEquals(1, gate.convergedCount());
+
+        // Stale, out-of-order report for SHARD_0 — must be ignored.
+        gate.shardReported(SHARD_0, ShardPhase.COMPLETING, null);
+        assertEquals("Stale COMPLETING must not drop SHARD_0 below target", 1, gate.convergedCount());
+        assertFalse(gate.isDone());
+
+        // The remaining shard completing must now fire the gate.
+        gate.shardReported(SHARD_1, ShardPhase.COMPLETED, null);
+        assertTrue("Gate must fire once all shards have (durably) reached COMPLETED", gate.isDone());
+        assertEquals(ShardGate.Outcome.ALL_REACHED_TARGET, gate.awaitable().get(1, TimeUnit.SECONDS).outcome());
+    }
+
+    // 17. Forward progress is unaffected — COMPLETING then COMPLETED still advances the shard.
+    public void testForwardProgressStillApplies() throws Exception {
+        ShardGate gate = new ShardGate(AoscLogger.create(ShardGate.class), Set.of(SHARD_0), ShardPhase.COMPLETED);
+
+        gate.shardReported(SHARD_0, ShardPhase.COMPLETING, null); // below target
+        assertEquals(0, gate.convergedCount());
+        assertFalse(gate.isDone());
+
+        gate.shardReported(SHARD_0, ShardPhase.COMPLETED, null); // forward — must apply
+        assertTrue(gate.isDone());
+        assertEquals(ShardGate.Outcome.ALL_REACHED_TARGET, gate.awaitable().get(1, TimeUnit.SECONDS).outcome());
+    }
 }
