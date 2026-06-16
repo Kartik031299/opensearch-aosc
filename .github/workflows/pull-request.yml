@@ -1,0 +1,41 @@
+name: Pull Request
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - 'releases/**'
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pull-request-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validation:
+    name: Run full CI
+    uses: ./.github/workflows/components.yml
+    with:
+      os_line: os2
+      include_docs: true
+      artifact_retention_days: 7
+
+  full_ci:
+    name: Full CI
+    needs: validation
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check full CI result
+        run: |
+          if [[ "${{ needs.validation.result }}" != "success" ]]; then
+            echo "Full CI failed: ${{ needs.validation.result }}" >&2
+            exit 1
+          fi

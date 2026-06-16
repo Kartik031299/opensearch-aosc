@@ -3,7 +3,7 @@
 AOSC releases have two version axes:
 
 - **AOSC version**: the plugin project version, such as `0.1.0`.
-- **OpenSearch compatibility line**: the OpenSearch major/minor line the ZIP was built against, such as `os2.19`.
+- **OpenSearch compatibility line**: the OpenSearch major/minor line the ZIP was built against, such as `2.19`.
 
 The plugin descriptor uses a patch-compatible semver range for the selected OpenSearch minor. For example, a ZIP built with OpenSearch `2.19.0` is intended for OpenSearch `2.19.x` unless a release note says otherwise.
 
@@ -32,7 +32,7 @@ build_versions=2.15.0,2.17.0,2.19.0
 test_versions=2.15.0,2.17.0,2.17.1,2.19.0,2.19.3
 ```
 
-Release tags, asset names, GitHub Actions matrices, and release branch checks are derived from these files. Do not type release versions directly into the GitHub workflow.
+Release tags, asset names, documentation versions, GitHub Actions matrices, and release branch checks are derived from these files. Do not type release versions directly into the GitHub workflow.
 
 ## Branches
 
@@ -40,13 +40,15 @@ Release branches are organized by OpenSearch major line:
 
 | Branch | Purpose |
 | --- | --- |
-| `main` | Active development. |
+| `develop` | Active development. |
 | `releases/2.x` | OpenSearch 2.x maintenance and releases. |
 | `releases/3.x` | OpenSearch 3.x maintenance and releases once supported. |
 
-GitHub release workflows must run from the branch declared in the matching `release/<line>.properties` file. For example, the OpenSearch 2.x release workflow should only publish from `releases/2.x`.
+GitHub release publishing must run from the branch declared in the matching `release/<line>.properties` file. For example, the OpenSearch 2.x release publisher should only publish plugin artifacts from `releases/2.x`.
 
-Pushing to a release branch runs CI only. Publishing is manual: run the GitHub `Release` workflow from the release branch after CI is green.
+Pushing to a release branch runs validation only. Publishing is manual: run the GitHub `Publish Release` workflow from the release branch after validation is green.
+
+Do not publish plugin releases directly from `develop`. Merge or cherry-pick the intended release content into the matching `releases/*` branch first, then release from that branch. This keeps release artifacts tied to a maintenance line instead of a moving development branch.
 
 Release tags should include the OpenSearch major line, for example:
 
@@ -57,20 +59,50 @@ aosc-0.1.0-os3
 
 Avoid ambiguous tags such as `v0.1.0` once OpenSearch 2.x and 3.x can diverge.
 
-The release workflow fails before building if the computed release tag or GitHub release already exists. Bump `aosc.version` before publishing another release for the same OpenSearch line.
+The publish workflow fails before building if the computed release tag or GitHub release already exists. Bump `aosc.version` before publishing another release for the same OpenSearch line.
 
-## GitHub CI Policy
+## OpenSearch Compatibility
 
-Pull requests run the `pr-checks` job automatically. This job builds the docs and runs the fast, YAML REST, integration, and 2-node smoke test coverage against the current primary OpenSearch version from `release/<line>.properties`.
+Each release line declares two compatibility lists:
 
-Before merging a PR, maintainers should also run full validation for the exact PR head commit. For same-repository branches, run the `CI` workflow manually from the GitHub Actions UI and select the PR branch. For forked PRs, apply the `full-ci` label; the pull request workflow will run the same full validation on the fork head without using repository secrets.
+| Property | Meaning |
+| --- | --- |
+| `build_versions` | OpenSearch minors that receive release ZIPs. |
+| `test_versions` | Exact OpenSearch patch versions covered by CI. |
 
-Full validation runs one matrix job per OpenSearch version in `test_versions`. Each matrix job runs fast checks, YAML REST tests, Java integration tests, all smoke topologies, and the high-shard scale profile in a single runner setup. Branch protection should require both stable check names:
+For OpenSearch 2.x, AOSC currently builds release ZIPs for `2.15`, `2.17`, and `2.19`, and runs CI against `2.15.0`, `2.17.0`, `2.17.1`, `2.19.0`, and `2.19.3`.
 
-- `pr-checks`
-- `full-ci-gate`
+The ZIP name intentionally uses the OpenSearch minor, for example `opensearch-aosc-0.1.0-opensearch-2.19.zip`. The plugin descriptor uses a patch-compatible semver range for that minor, so the `2.19` ZIP is intended for the `2.19.x` line unless the release notes call out an exception.
 
-If the PR branch changes after full validation, run full validation again before merging.
+## GitHub Actions Policy
+
+The workflow files are split by the reason a workflow runs:
+
+| Workflow | File | Trigger | Publishes? |
+| --- | --- | --- | --- |
+| Pull Request | `.github/workflows/pull-request.yml` | Pull requests targeting `develop` or `releases/**` | No |
+| Branch: develop | `.github/workflows/branch-develop.yml` | Pushes to `develop` | Publishes `/develop/` docs after validation passes |
+| Branch: release | `.github/workflows/branch-release.yml` | Pushes to `releases/**` | No |
+| Publish Release | `.github/workflows/publish-release.yml` | Manual dispatch from a release branch | Publishes GitHub release assets and release docs |
+| Components | `.github/workflows/components.yml` | Reusable workflow only | No |
+
+Pull requests run full CI automatically. Full CI builds the docs and validates every OpenSearch version in `test_versions` from `release/<line>.properties`.
+
+Full CI runs these suite categories as separate jobs so failures identify the exact affected OpenSearch version and suite:
+
+- fast checks
+- YAML REST tests
+- Java integration tests
+- 2-node smoke tests
+- dedicated cluster-manager smoke tests
+- Docker smoke tests
+- high-shard 2-node scale tests
+
+Pushes to `develop` and `releases/**` also run full CI. Branch protection should require the stable check name:
+
+- `Full CI`
+
+The `Publish Release` workflow runs the same full validation before it builds release ZIPs or creates a draft GitHub release.
 
 ## GitHub Release Assets
 
@@ -85,9 +117,9 @@ Each GitHub release should include:
 Example OpenSearch 2.x assets:
 
 ```text
-opensearch-aosc-0.1.0-os2.15.0.zip
-opensearch-aosc-0.1.0-os2.17.0.zip
-opensearch-aosc-0.1.0-os2.19.0.zip
+opensearch-aosc-0.1.0-opensearch-2.15.zip
+opensearch-aosc-0.1.0-opensearch-2.17.zip
+opensearch-aosc-0.1.0-opensearch-2.19.zip
 SHA256SUMS
 ```
 
@@ -115,29 +147,33 @@ Inspect the release metadata with:
 
 ## Documentation Site
 
-GitHub Pages is deployed by the `Pages` workflow. The workflow builds all public documentation lines into one site on every push to `main` or `releases/**`:
+GitHub Pages uses MkDocs Material with `mike` versioning. Pull requests build the docs as CI validation only; they do not publish the site.
 
-| Source branch | Published path |
+The `Publish Release` workflow publishes release docs to the `gh-pages` branch after release validation, asset build, and draft release creation succeed. The GitHub Pages repository setting should serve from the `gh-pages` branch at `/`.
+
+Pushes to `develop` publish the current development docs to `/develop/` after full CI passes.
+
+The current docs layout is:
+
+| Source | Published path |
 | --- | --- |
-| `main` | `/latest/` |
-| `releases/2.x` | `/2.x/` |
-| `releases/3.x` | `/3.x/` once the branch exists. |
+| `develop` | `/develop/` |
+| `releases/2.x` with `aosc.version=0.1.0` | `/0.1-os2/` |
+| `releases/3.x` with `aosc.version=0.1.0` | `/0.1-os3/` once the branch exists |
 
-The root page redirects to `/latest/` and lists the available versions. The Pages workflow rebuilds every available docs line each time so one branch does not overwrite another branch's published docs.
+Release documentation is versioned by AOSC minor line plus OpenSearch major line. For example, `aosc.version=0.1.0` and `line=os2` publish to `/0.1-os2/`. A patch release such as `0.1.1` updates the same `/0.1-os2/` documentation version instead of creating a new docs version for every patch.
 
-The workflow deploys only when the GitHub repository is public or the organization plan enables Pages for private repositories. While the repository is private without private Pages support, the Pages workflow is skipped.
-
-Build the same versioned site locally with:
+Build the docs locally with:
 
 ```bash
-./scripts/build-pages-site.sh
+mkdocs build --strict
 ```
 
-The generated site is written to `build/pages/`.
+`mike` owns the version selector and generated `versions.json`; do not edit those files by hand.
 
 ## CI Artifacts
 
-CI uploads Gradle reports and test results only when a validation job fails. Normal CI artifacts expire after 7 days; release workflow test artifacts expire after 14 days. Release ZIPs are not CI artifacts; they are attached to GitHub Releases.
+CI uploads Gradle reports and test results only when a validation job fails. Normal CI artifacts expire after 7 days; publish workflow test artifacts expire after 14 days. Release ZIPs are not CI artifacts; they are attached to GitHub Releases.
 
 ## First Public Import
 
