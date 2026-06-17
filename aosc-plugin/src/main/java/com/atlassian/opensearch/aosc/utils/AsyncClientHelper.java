@@ -7,6 +7,8 @@
  */
 package com.atlassian.opensearch.aosc.utils;
 
+import org.apache.logging.log4j.Logger;
+
 import org.opensearch.action.ActionRequest;
 import org.opensearch.action.ActionType;
 import org.opensearch.action.admin.cluster.health.ClusterHealthRequest;
@@ -22,6 +24,7 @@ import org.opensearch.action.admin.indices.readonly.AddIndexBlockResponse;
 import org.opensearch.action.admin.indices.refresh.RefreshRequest;
 import org.opensearch.action.admin.indices.refresh.RefreshResponse;
 import org.opensearch.action.admin.indices.settings.put.UpdateSettingsRequest;
+import org.opensearch.action.bulk.BackoffPolicy;
 import org.opensearch.action.bulk.BulkRequest;
 import org.opensearch.action.bulk.BulkResponse;
 import org.opensearch.action.get.GetRequest;
@@ -30,12 +33,17 @@ import org.opensearch.action.index.IndexRequest;
 import org.opensearch.action.index.IndexResponse;
 import org.opensearch.action.search.SearchRequest;
 import org.opensearch.action.search.SearchResponse;
+import org.opensearch.action.support.RetryableAction;
 import org.opensearch.action.support.master.AcknowledgedResponse;
 import org.opensearch.client.Client;
+import org.opensearch.common.unit.TimeValue;
 import org.opensearch.core.action.ActionListener;
 import org.opensearch.core.action.ActionResponse;
+import org.opensearch.threadpool.ThreadPool;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 /**
  * Utility that wraps OpenSearch's {@link Client#execute} with {@link CompletableFuture}
@@ -67,6 +75,53 @@ public final class AsyncClientHelper {
             future.completeExceptionally(e);
         }
         return future;
+    }
+
+    /**
+     * Retry an async operation with bounded, exponentially-backed-off retries and return a
+     * {@link CompletableFuture}. Hides {@link RetryableAction} and {@link ActionListener} so callers
+     * stay on the {@code CompletableFuture} API, exactly like {@link #executeAsync}.
+     *
+     * <p>{@code attempt} performs a single try and returns its future; it is invoked again on each retry,
+     * so callers can rebuild fresh, "built-at-send" state per attempt. {@code retryable} decides whether a
+     * given failure is retried — returning {@code false} (e.g. on exhausted attempts or a non-retryable
+     * error) fails the returned future.</p>
+     *
+     * <p>Note: {@link RetryableAction} terminates on its {@code giveUpTimeout} and advances the backoff
+     * iterator unconditionally, so an <em>infinite</em> (delay-capped) backoff policy is used here; bound
+     * the number of attempts inside {@code retryable} if a count-based limit is desired.</p>
+     */
+    public static <Resp> CompletableFuture<Resp> executeAsyncWithRetry(
+        Logger logger,
+        ThreadPool threadPool,
+        Supplier<CompletableFuture<Resp>> attempt,
+        TimeValue initialDelay,
+        TimeValue maxDelay,
+        TimeValue giveUpTimeout,
+        String executor,
+        Predicate<Exception> retryable
+    ) {
+        CompletableFuture<Resp> result = new CompletableFuture<>();
+        new RetryableAction<Resp>(
+            logger,
+            threadPool,
+            initialDelay,
+            giveUpTimeout,
+            ActionListener.wrap(result::complete, result::completeExceptionally),
+            BackoffPolicy.exponentialEqualJitterBackoff(initialDelay.millis(), maxDelay.millis()),
+            executor
+        ) {
+            @Override
+            public void tryAction(ActionListener<Resp> listener) {
+                AsyncUtils.bridgeToListener(attempt.get(), listener);
+            }
+
+            @Override
+            public boolean shouldRetry(Exception e) {
+                return retryable.test(e);
+            }
+        }.run();
+        return result;
     }
 
     public static CompletableFuture<BulkResponse> executeBulkAsync(Client client, BulkRequest request) {
