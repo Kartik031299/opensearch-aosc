@@ -55,8 +55,8 @@ emit_validation_row() {
   if [[ "${first}" != "true" ]]; then
     printf ','
   fi
-  printf '{"opensearch_version":"%s","id":"%s","label":"%s","gradle_task":"%s","gradle_args":"%s"}' \
-    "${version}" "${id}" "${label}" "${gradle_task}" "${gradle_args}"
+  printf '{"opensearch_version":"%s","java_version":"%s","id":"%s","label":"%s","gradle_task":"%s","gradle_args":"%s"}' \
+    "${version}" "${JAVA_VERSION}" "${id}" "${label}" "${gradle_task}" "${gradle_args}"
 }
 
 emit_github_output() {
@@ -71,6 +71,7 @@ emit_output_lines() {
   {
     echo "aosc_version=${AOSC_VERSION}"
     echo "os_line=${OS_LINE}"
+    echo "java_version=${JAVA_VERSION}"
     echo "release_branch=${RELEASE_BRANCH}"
     echo "primary_version=${PRIMARY_VERSION}"
     echo "build_versions=${BUILD_VERSIONS}"

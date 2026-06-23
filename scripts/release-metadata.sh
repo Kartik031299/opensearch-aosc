@@ -32,6 +32,7 @@ RELEASE_BRANCH="$(read_prop "${LINE_FILE}" "branch")"
 PRIMARY_VERSION="$(read_prop "${LINE_FILE}" "primary_version")"
 BUILD_VERSIONS="$(read_prop "${LINE_FILE}" "build_versions")"
 TEST_VERSIONS="$(read_prop "${LINE_FILE}" "test_versions")"
+JAVA_VERSION="$(read_prop "${LINE_FILE}" "java_version")"
 RELEASE_TAG="aosc-${AOSC_VERSION}-${OS_LINE}"
 DOCS_VERSION="${AOSC_VERSION}-${OS_LINE}"
 
@@ -49,6 +50,7 @@ RELEASE_BRANCH=${RELEASE_BRANCH}
 PRIMARY_VERSION=${PRIMARY_VERSION}
 BUILD_VERSIONS=${BUILD_VERSIONS}
 TEST_VERSIONS=${TEST_VERSIONS}
+JAVA_VERSION=${JAVA_VERSION}
 RELEASE_TAG=${RELEASE_TAG}
 DOCS_VERSION=${DOCS_VERSION}
 EOF
@@ -61,6 +63,7 @@ Release branch: ${RELEASE_BRANCH}
 Primary version: ${PRIMARY_VERSION}
 Build versions: ${BUILD_VERSIONS}
 Test versions: ${TEST_VERSIONS}
+Java version: ${JAVA_VERSION}
 Release tag: ${RELEASE_TAG}
 Docs version: ${DOCS_VERSION}
 EOF

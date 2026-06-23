@@ -10,6 +10,7 @@ on:
         type: choice
         options:
           - os2
+          - os3
       prerelease:
         description: Mark draft release as prerelease
         required: true
@@ -30,6 +31,7 @@ jobs:
     outputs:
       aosc_version: ${{ steps.matrix.outputs.aosc_version }}
       os_line: ${{ steps.matrix.outputs.os_line }}
+      java_version: ${{ steps.matrix.outputs.java_version }}
       release_branch: ${{ steps.matrix.outputs.release_branch }}
       primary_version: ${{ steps.matrix.outputs.primary_version }}
       build_versions: ${{ steps.matrix.outputs.build_versions }}
@@ -91,7 +93,7 @@ jobs:
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: "11"
+          java-version: ${{ needs.metadata.outputs.java_version }}
           cache: gradle
       - name: Pre-fetch Gradle
         run: ./scripts/ensure-gradle.sh
