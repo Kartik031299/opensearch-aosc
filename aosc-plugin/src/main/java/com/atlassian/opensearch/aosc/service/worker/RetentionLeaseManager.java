@@ -12,11 +12,11 @@ import com.atlassian.opensearch.aosc.utils.AsyncClientHelper;
 import com.atlassian.opensearch.aosc.utils.AsyncUtils;
 import com.atlassian.opensearch.aosc.utils.MigrationAuditLogger;
 
-import org.opensearch.client.Client;
 import org.opensearch.core.index.shard.ShardId;
 import org.opensearch.index.seqno.RetentionLeaseActions;
 import org.opensearch.index.seqno.RetentionLeaseAlreadyExistsException;
 import org.opensearch.index.seqno.RetentionLeaseNotFoundException;
+import org.opensearch.transport.client.Client;
 
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;

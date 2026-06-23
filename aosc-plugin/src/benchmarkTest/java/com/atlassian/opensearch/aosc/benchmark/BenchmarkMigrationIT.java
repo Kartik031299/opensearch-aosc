@@ -173,8 +173,11 @@ public class BenchmarkMigrationIT extends AoscBenchmarkBase {
         try {
             result.writeJson(outputDir);
             metrics.writeResults();
-        } catch (java.security.AccessControlException e) {
-            LOG.warning("Cannot write results to disk (security manager): " + e.getMessage());
+        } catch (SecurityException e) {
+            // OpenSearch 3.x replaced the SecurityManager with a Java agent; a denied
+            // disk write now surfaces as a SecurityException (AccessControlException,
+            // deprecated for removal in Java 21, is no longer referenced directly).
+            LOG.warning("Cannot write results to disk (denied by security policy): " + e.getMessage());
         }
 
         // Phase 7: Threshold check

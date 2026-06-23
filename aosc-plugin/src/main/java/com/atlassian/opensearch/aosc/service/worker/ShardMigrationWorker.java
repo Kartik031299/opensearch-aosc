@@ -23,10 +23,10 @@ import com.atlassian.opensearch.aosc.utils.LC;
 import com.atlassian.opensearch.aosc.utils.MigrationAuditLogger;
 import com.atlassian.opensearch.aosc.utils.ShardHandle;
 
-import org.opensearch.client.Client;
 import org.opensearch.common.settings.ClusterSettings;
 import org.opensearch.common.unit.TimeValue;
 import org.opensearch.threadpool.ThreadPool;
+import org.opensearch.transport.client.Client;
 
 import java.io.Closeable;
 import java.util.Objects;

@@ -15,11 +15,11 @@ import com.atlassian.opensearch.aosc.utils.AoscLogger;
 
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakScope;
 
-import org.opensearch.client.Client;
 import org.opensearch.core.action.ActionListener;
 import org.opensearch.test.OpenSearchTestCase;
 import org.opensearch.threadpool.TestThreadPool;
 import org.opensearch.threadpool.ThreadPool;
+import org.opensearch.transport.client.Client;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;

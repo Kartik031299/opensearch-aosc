@@ -24,7 +24,6 @@ import com.atlassian.opensearch.aosc.utils.IndexOperationUtils;
 import com.atlassian.opensearch.aosc.utils.LC;
 import com.atlassian.opensearch.aosc.utils.MigrationAuditLogger;
 
-import org.opensearch.client.Client;
 import org.opensearch.cluster.metadata.IndexMetadata;
 import org.opensearch.cluster.service.ClusterService;
 import org.opensearch.common.settings.ClusterSettings;
@@ -33,6 +32,7 @@ import org.opensearch.core.index.Index;
 import org.opensearch.core.index.shard.ShardId;
 import org.opensearch.index.query.QueryBuilder;
 import org.opensearch.threadpool.ThreadPool;
+import org.opensearch.transport.client.Client;
 
 import java.io.Closeable;
 import java.util.Collections;

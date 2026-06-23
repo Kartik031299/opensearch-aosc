@@ -20,7 +20,6 @@ import com.atlassian.opensearch.aosc.utils.ShardHandle;
 import org.opensearch.action.bulk.BulkItemResponse;
 import org.opensearch.action.bulk.BulkRequest;
 import org.opensearch.action.bulk.BulkResponse;
-import org.opensearch.client.Client;
 import org.opensearch.core.action.ActionListener;
 import org.opensearch.core.index.Index;
 import org.opensearch.core.index.shard.ShardId;
@@ -29,6 +28,7 @@ import org.opensearch.index.translog.Translog;
 import org.opensearch.test.OpenSearchTestCase;
 import org.opensearch.threadpool.TestThreadPool;
 import org.opensearch.threadpool.ThreadPool;
+import org.opensearch.transport.client.Client;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;

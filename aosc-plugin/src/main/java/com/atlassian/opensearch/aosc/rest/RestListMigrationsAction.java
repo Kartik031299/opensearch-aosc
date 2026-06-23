@@ -12,10 +12,10 @@ import com.atlassian.opensearch.aosc.action.list.ListMigrationsBody;
 import com.atlassian.opensearch.aosc.action.list.ListMigrationsRequest;
 import com.atlassian.opensearch.aosc.model.phase.CoordinatorPhase;
 
-import org.opensearch.client.node.NodeClient;
 import org.opensearch.rest.BaseRestHandler;
 import org.opensearch.rest.RestRequest;
 import org.opensearch.rest.action.RestToXContentListener;
+import org.opensearch.transport.client.node.NodeClient;
 
 import java.util.ArrayList;
 import java.util.Arrays;

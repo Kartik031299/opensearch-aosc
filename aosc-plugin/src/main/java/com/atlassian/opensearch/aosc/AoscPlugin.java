@@ -35,7 +35,6 @@ import com.atlassian.opensearch.aosc.transform.TransformFactory;
 import com.atlassian.opensearch.aosc.utils.AoscLogger;
 
 import org.opensearch.action.ActionRequest;
-import org.opensearch.client.Client;
 import org.opensearch.cluster.ClusterState;
 import org.opensearch.cluster.NamedDiff;
 import org.opensearch.cluster.metadata.IndexNameExpressionResolver;
@@ -66,6 +65,7 @@ import org.opensearch.script.ScriptService;
 import org.opensearch.threadpool.ExecutorBuilder;
 import org.opensearch.threadpool.ScalingExecutorBuilder;
 import org.opensearch.threadpool.ThreadPool;
+import org.opensearch.transport.client.Client;
 import org.opensearch.watcher.ResourceWatcherService;
 
 import java.io.Closeable;

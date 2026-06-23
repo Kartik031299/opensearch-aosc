@@ -15,7 +15,6 @@ import com.atlassian.opensearch.aosc.utils.AoscLogger;
 
 import org.opensearch.action.index.IndexRequest;
 import org.opensearch.action.index.IndexResponse;
-import org.opensearch.client.Client;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.common.util.concurrent.ThreadContext;
 import org.opensearch.core.action.ActionListener;
@@ -23,6 +22,7 @@ import org.opensearch.core.index.shard.ShardId;
 import org.opensearch.index.engine.VersionConflictEngineException;
 import org.opensearch.test.OpenSearchTestCase;
 import org.opensearch.threadpool.ThreadPool;
+import org.opensearch.transport.client.Client;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;

@@ -7,7 +7,8 @@
  */
 package com.atlassian.opensearch.aosc.benchmark;
 
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.core5.http.ParseException;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
 
 import org.opensearch.client.Request;
 import org.opensearch.client.Response;
@@ -129,7 +130,7 @@ public class MetricsCollector implements Closeable {
         }
     }
 
-    private void poll(long startMs) throws IOException {
+    private void poll(long startMs) throws IOException, ParseException {
         Request request = new Request("GET", "/_plugins/_aosc/" + sourceIndex + "/_status");
         Response response = client.performRequest(request);
         String body = EntityUtils.toString(response.getEntity());

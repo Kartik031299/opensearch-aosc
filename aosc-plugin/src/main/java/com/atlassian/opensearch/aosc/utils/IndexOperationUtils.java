@@ -25,7 +25,6 @@ import org.opensearch.action.admin.indices.stats.IndicesStatsRequest;
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse;
 import org.opensearch.action.admin.indices.stats.ShardStats;
 import org.opensearch.action.support.IndicesOptions;
-import org.opensearch.client.Client;
 import org.opensearch.cluster.metadata.IndexMetadata;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.common.unit.TimeValue;
@@ -34,6 +33,7 @@ import org.opensearch.index.seqno.RetentionLease;
 import org.opensearch.index.seqno.RetentionLeaseActions;
 import org.opensearch.index.seqno.RetentionLeaseNotFoundException;
 import org.opensearch.index.seqno.RetentionLeaseStats;
+import org.opensearch.transport.client.Client;
 
 import java.util.ArrayList;
 import java.util.HashMap;

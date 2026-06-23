@@ -10,10 +10,10 @@ package com.atlassian.opensearch.aosc.action.start.validation;
 import com.atlassian.opensearch.aosc.model.MigrationRequest;
 import com.atlassian.opensearch.aosc.transform.TransformFactory;
 
-import org.opensearch.client.Client;
 import org.opensearch.cluster.ClusterState;
 import org.opensearch.cluster.metadata.IndexMetadata;
 import org.opensearch.common.settings.ClusterSettings;
+import org.opensearch.transport.client.Client;
 
 import java.util.Objects;
 

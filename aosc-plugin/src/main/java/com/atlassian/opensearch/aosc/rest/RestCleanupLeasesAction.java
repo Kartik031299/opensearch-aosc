@@ -11,10 +11,10 @@ import com.atlassian.opensearch.aosc.action.cleanup.CleanupLeasesAction;
 import com.atlassian.opensearch.aosc.action.cleanup.CleanupLeasesBody;
 import com.atlassian.opensearch.aosc.action.cleanup.CleanupLeasesRequest;
 
-import org.opensearch.client.node.NodeClient;
 import org.opensearch.rest.BaseRestHandler;
 import org.opensearch.rest.RestRequest;
 import org.opensearch.rest.action.RestToXContentListener;
+import org.opensearch.transport.client.node.NodeClient;
 
 import java.util.List;
 

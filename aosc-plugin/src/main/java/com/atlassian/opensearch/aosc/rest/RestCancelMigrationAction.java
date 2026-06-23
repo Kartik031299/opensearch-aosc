@@ -11,10 +11,10 @@ import com.atlassian.opensearch.aosc.action.cancel.CancelMigrationAction;
 import com.atlassian.opensearch.aosc.action.cancel.CancelMigrationBody;
 import com.atlassian.opensearch.aosc.action.cancel.CancelMigrationRequest;
 
-import org.opensearch.client.node.NodeClient;
 import org.opensearch.rest.BaseRestHandler;
 import org.opensearch.rest.RestRequest;
 import org.opensearch.rest.action.RestToXContentListener;
+import org.opensearch.transport.client.node.NodeClient;
 
 import java.util.List;
 

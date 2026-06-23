@@ -13,15 +13,15 @@ import com.atlassian.opensearch.aosc.transform.TransformFactory;
 import org.opensearch.action.admin.indices.stats.CommonStats;
 import org.opensearch.action.admin.indices.stats.IndicesStatsRequest;
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse;
-import org.opensearch.client.AdminClient;
-import org.opensearch.client.Client;
-import org.opensearch.client.IndicesAdminClient;
 import org.opensearch.cluster.ClusterState;
 import org.opensearch.common.settings.ClusterSettings;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.core.action.ActionListener;
 import org.opensearch.index.shard.DocsStats;
 import org.opensearch.test.OpenSearchTestCase;
+import org.opensearch.transport.client.AdminClient;
+import org.opensearch.transport.client.Client;
+import org.opensearch.transport.client.IndicesAdminClient;
 
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;

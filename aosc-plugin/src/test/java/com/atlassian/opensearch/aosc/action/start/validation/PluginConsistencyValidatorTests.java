@@ -12,14 +12,14 @@ import com.atlassian.opensearch.aosc.transform.TransformFactory;
 
 import org.opensearch.action.admin.cluster.node.info.NodesInfoRequest;
 import org.opensearch.action.admin.cluster.node.info.NodesInfoResponse;
-import org.opensearch.client.AdminClient;
-import org.opensearch.client.Client;
-import org.opensearch.client.ClusterAdminClient;
 import org.opensearch.cluster.ClusterState;
 import org.opensearch.common.settings.ClusterSettings;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.core.action.ActionListener;
 import org.opensearch.test.OpenSearchTestCase;
+import org.opensearch.transport.client.AdminClient;
+import org.opensearch.transport.client.Client;
+import org.opensearch.transport.client.ClusterAdminClient;
 
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;

@@ -27,7 +27,6 @@ import com.atlassian.opensearch.aosc.utils.AoscLogger;
 import com.atlassian.opensearch.aosc.utils.LC;
 import com.atlassian.opensearch.aosc.utils.SyntheticRoutingHelper;
 
-import org.opensearch.client.Client;
 import org.opensearch.cluster.ClusterChangedEvent;
 import org.opensearch.cluster.ClusterState;
 import org.opensearch.cluster.ClusterStateApplier;
@@ -38,6 +37,7 @@ import org.opensearch.cluster.routing.ShardRouting;
 import org.opensearch.cluster.service.ClusterService;
 import org.opensearch.common.inject.Inject;
 import org.opensearch.threadpool.ThreadPool;
+import org.opensearch.transport.client.Client;
 
 import java.io.Closeable;
 import java.io.IOException;
