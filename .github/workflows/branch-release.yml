@@ -13,11 +13,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  resolve:
+    name: Resolve OpenSearch line
+    runs-on: ubuntu-latest
+    outputs:
+      os_line: ${{ steps.line.outputs.os_line }}
+    steps:
+      - uses: actions/checkout@v6
+      - id: line
+        run: echo "os_line=$(./scripts/resolve-os-line.sh "${GITHUB_REF_NAME}")" >> "$GITHUB_OUTPUT"
+
   validation:
     name: Run full CI
+    needs: resolve
     uses: ./.github/workflows/components.yml
     with:
-      os_line: os2
+      os_line: ${{ needs.resolve.outputs.os_line }}
       include_docs: true
       artifact_retention_days: 7
 

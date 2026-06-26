@@ -16,7 +16,6 @@ import org.opensearch.action.admin.indices.stats.IndicesStatsAction;
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponse;
 import org.opensearch.action.admin.indices.stats.IndicesStatsResponseTestFactory;
 import org.opensearch.action.admin.indices.stats.ShardStats;
-import org.opensearch.client.support.AbstractClient;
 import org.opensearch.cluster.routing.ShardRouting;
 import org.opensearch.cluster.routing.ShardRoutingState;
 import org.opensearch.cluster.routing.TestShardRouting;
@@ -36,6 +35,7 @@ import org.opensearch.index.shard.ShardPath;
 import org.opensearch.test.OpenSearchTestCase;
 import org.opensearch.threadpool.TestThreadPool;
 import org.opensearch.threadpool.ThreadPool;
+import org.opensearch.transport.client.support.AbstractClient;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -49,7 +49,7 @@ import java.util.concurrent.TimeUnit;
  * Unit tests for {@link TransportCleanupLeasesAction}.
  *
  * <p>The transport action delegates to {@link IndexOperationUtils} which in turn uses the
- * {@link org.opensearch.client.Client} to issue {@link IndicesStatsAction} (to enumerate
+ * {@link org.opensearch.transport.client.Client} to issue {@link IndicesStatsAction} (to enumerate
  * retention leases) and {@link RetentionLeaseActions.Remove} (to release matched leases).
  * These tests use a fake client that intercepts both calls and lets each test script the
  * per-call response, so the production action's filtering/dedup/dry-run/error-handling
@@ -284,7 +284,8 @@ public class TransportCleanupLeasesActionTests extends OpenSearchTestCase {
             new CommonStats(),
             /* commit */ null,
             /* seqNo */ null,
-            new RetentionLeaseStats(retentionLeases)
+            new RetentionLeaseStats(retentionLeases),
+            /* pollingIngest */ null
         );
     }
 

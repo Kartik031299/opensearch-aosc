@@ -18,15 +18,15 @@ import com.atlassian.opensearch.aosc.model.phase.ShardPhase;
 import com.atlassian.opensearch.aosc.model.transform.InlineTransformScript;
 import com.atlassian.opensearch.aosc.utils.AoscLogger;
 
-import org.opensearch.client.AdminClient;
-import org.opensearch.client.Client;
-import org.opensearch.client.IndicesAdminClient;
 import org.opensearch.cluster.ClusterState;
 import org.opensearch.cluster.service.ClusterService;
 import org.opensearch.common.settings.ClusterSettings;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.test.OpenSearchTestCase;
 import org.opensearch.threadpool.ThreadPool;
+import org.opensearch.transport.client.AdminClient;
+import org.opensearch.transport.client.Client;
+import org.opensearch.transport.client.IndicesAdminClient;
 
 import java.util.HashMap;
 import java.util.HashSet;

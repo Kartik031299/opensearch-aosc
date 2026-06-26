@@ -12,9 +12,9 @@ import com.atlassian.opensearch.aosc.AoscPlugin;
 import org.opensearch.action.admin.cluster.node.info.NodeInfo;
 import org.opensearch.action.admin.cluster.node.info.NodesInfoRequest;
 import org.opensearch.action.admin.cluster.node.info.PluginsAndModules;
-import org.opensearch.client.Client;
 import org.opensearch.core.action.ActionListener;
 import org.opensearch.plugins.PluginInfo;
+import org.opensearch.transport.client.Client;
 
 import java.util.ArrayList;
 import java.util.HashMap;

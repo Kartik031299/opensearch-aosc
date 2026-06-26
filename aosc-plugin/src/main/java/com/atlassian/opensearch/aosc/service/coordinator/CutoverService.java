@@ -16,10 +16,10 @@ import com.atlassian.opensearch.aosc.utils.MigrationAuditLogger;
 
 import org.opensearch.action.admin.indices.refresh.RefreshRequest;
 import org.opensearch.action.search.SearchRequest;
-import org.opensearch.client.Client;
 import org.opensearch.index.query.QueryBuilder;
 import org.opensearch.index.query.QueryBuilders;
 import org.opensearch.search.builder.SearchSourceBuilder;
+import org.opensearch.transport.client.Client;
 
 import java.util.Locale;
 import java.util.Objects;
@@ -187,7 +187,7 @@ public class CutoverService {
     CompletableFuture<Long> countDocs(String index, QueryBuilder validationQuery) {
         QueryBuilder query = validationQuery != null ? validationQuery : QueryBuilders.matchAllQuery();
         SearchRequest searchRequest = new SearchRequest(index).source(new SearchSourceBuilder().query(query).size(0).trackTotalHits(true));
-        return AsyncClientHelper.executeSearchAsync(client, searchRequest).thenApply(response -> response.getHits().getTotalHits().value);
+        return AsyncClientHelper.executeSearchAsync(client, searchRequest).thenApply(response -> response.getHits().getTotalHits().value());
     }
 
     // ---- Exception types ----

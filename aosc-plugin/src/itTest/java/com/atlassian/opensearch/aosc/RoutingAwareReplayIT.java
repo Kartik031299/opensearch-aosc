@@ -316,7 +316,7 @@ public class RoutingAwareReplayIT extends AoscIntegTestBase {
         SearchResponse searchResp = client().search(
             new SearchRequest(alias).source(new SearchSourceBuilder().query(QueryBuilders.matchAllQuery()).size(0))
         ).actionGet();
-        assertEquals("Alias search should return docs from target", getDocCount(target), searchResp.getHits().getTotalHits().value);
+        assertEquals("Alias search should return docs from target", getDocCount(target), searchResp.getHits().getTotalHits().value());
     }
 
     /**

@@ -18,7 +18,6 @@ import com.atlassian.opensearch.aosc.utils.LC;
 import com.atlassian.opensearch.aosc.utils.ShardHandle;
 import com.atlassian.opensearch.aosc.utils.SyntheticRoutingHelper;
 
-import org.opensearch.client.Client;
 import org.opensearch.cluster.ClusterChangedEvent;
 import org.opensearch.cluster.ClusterState;
 import org.opensearch.cluster.ClusterStateListener;
@@ -31,6 +30,7 @@ import org.opensearch.core.index.shard.ShardId;
 import org.opensearch.index.shard.IndexEventListener;
 import org.opensearch.index.shard.IndexShard;
 import org.opensearch.threadpool.ThreadPool;
+import org.opensearch.transport.client.Client;
 
 import java.io.Closeable;
 import java.io.IOException;

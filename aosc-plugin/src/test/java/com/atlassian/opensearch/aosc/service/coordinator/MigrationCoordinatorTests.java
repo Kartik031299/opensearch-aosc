@@ -24,10 +24,7 @@ import com.carrotsearch.randomizedtesting.annotations.ThreadLeakScope;
 
 import org.opensearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.opensearch.action.admin.indices.settings.put.UpdateSettingsRequest;
-import org.opensearch.action.support.master.AcknowledgedResponse;
-import org.opensearch.client.AdminClient;
-import org.opensearch.client.Client;
-import org.opensearch.client.IndicesAdminClient;
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse;
 import org.opensearch.cluster.ClusterState;
 import org.opensearch.cluster.ClusterStateUpdateTask;
 import org.opensearch.cluster.service.ClusterService;
@@ -38,6 +35,9 @@ import org.opensearch.core.action.ActionListener;
 import org.opensearch.index.IndexNotFoundException;
 import org.opensearch.test.OpenSearchTestCase;
 import org.opensearch.threadpool.ThreadPool;
+import org.opensearch.transport.client.AdminClient;
+import org.opensearch.transport.client.Client;
+import org.opensearch.transport.client.IndicesAdminClient;
 
 import java.util.ArrayList;
 import java.util.Arrays;

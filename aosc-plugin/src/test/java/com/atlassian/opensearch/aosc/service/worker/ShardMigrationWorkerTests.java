@@ -15,7 +15,6 @@ import com.atlassian.opensearch.aosc.transform.IdentityTransformFunction;
 import com.atlassian.opensearch.aosc.utils.AoscLogger;
 import com.atlassian.opensearch.aosc.utils.ShardHandle;
 
-import org.opensearch.client.Client;
 import org.opensearch.common.settings.ClusterSettings;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.common.util.concurrent.ThreadContext;
@@ -25,6 +24,7 @@ import org.opensearch.index.seqno.SeqNoStats;
 import org.opensearch.index.shard.IndexShard;
 import org.opensearch.test.OpenSearchTestCase;
 import org.opensearch.threadpool.ThreadPool;
+import org.opensearch.transport.client.Client;
 
 import java.util.HashSet;
 

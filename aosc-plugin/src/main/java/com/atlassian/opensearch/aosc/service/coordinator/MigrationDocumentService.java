@@ -25,7 +25,6 @@ import org.opensearch.action.search.SearchPhaseExecutionException;
 import org.opensearch.action.search.SearchRequest;
 import org.opensearch.action.search.ShardSearchFailure;
 import org.opensearch.action.support.WriteRequest;
-import org.opensearch.client.Client;
 import org.opensearch.common.util.concurrent.ThreadContext;
 import org.opensearch.common.xcontent.XContentType;
 import org.opensearch.index.IndexNotFoundException;
@@ -34,6 +33,7 @@ import org.opensearch.index.query.QueryBuilders;
 import org.opensearch.search.SearchHit;
 import org.opensearch.search.builder.SearchSourceBuilder;
 import org.opensearch.search.sort.SortOrder;
+import org.opensearch.transport.client.Client;
 
 import java.io.IOException;
 import java.io.InputStream;

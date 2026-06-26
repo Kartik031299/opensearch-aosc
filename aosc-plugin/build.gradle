@@ -8,6 +8,14 @@ apply plugin: 'com.diffplug.spotless'
 apply plugin: 'opensearch.yaml-rest-test'
 apply plugin: 'opensearch.pluginzip'
 
+// OpenSearch 3.x runs tests under a Java agent (org.opensearch.javaagent.*) that
+// must be attached to every test JVM via -javaagent; the 'opensearch.java-agent'
+// plugin wires that in. The plugin ships only with 3.x build-tools, so it is
+// applied only for 3.x targets.
+if ((opensearch_version.split('\\.')[0] as int) >= 3) {
+    apply plugin: 'opensearch.java-agent'
+}
+
 def pluginName = 'opensearch-aosc'
 def pluginDescription = 'OpenSearch AOSC'
 def packagePath = 'com.atlassian'
@@ -15,9 +23,14 @@ def pathToPlugin = 'opensearch.aosc'
 def pluginClassName = 'AoscPlugin'
 group = "Atlassian"
 
+// Select source/target Java compatibility from the target OpenSearch major
+// version (3.x → Java 21, otherwise Java 11).
+def osMajor = opensearch_version.split('\\.')[0] as int
+def javaCompat = osMajor >= 3 ? JavaVersion.VERSION_21 : JavaVersion.VERSION_11
+
 java {
-    targetCompatibility = JavaVersion.VERSION_11
-    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = javaCompat
+    sourceCompatibility = javaCompat
 }
 
 // ---------------------------------------------------------------------------
@@ -97,23 +110,41 @@ validateNebulaPom.enabled = false
 
 // Supported OpenSearch versions — single source of truth for multi-version builds.
 ext {
-    supported_os_versions = ['2.15.0', '2.17.0', '2.19.0']
+    supported_os_versions = ['2.15.0', '2.17.0', '2.19.0', '3.1.0', '3.3.0', '3.5.0', '3.6.0']
     primary_os_version = '2.19.0'
 
-    // Jackson-core version shipped by each supported OpenSearch minor (B041).
+    // Jackson versions shipped by each supported OpenSearch minor (B041).
     // Mismatch causes NoSuchMethodError crashes at runtime.
     // Keyed by minor version — patches within a minor ship the same Jackson.
-    jackson_version_map = [
+    // jackson-databind and jackson-annotations are tracked separately because
+    // some minors ship a different patch for each (e.g. OpenSearch 3.5 ships
+    // databind 2.20.1 but annotations 2.20; 3.6 ships 2.21.2 vs 2.21).
+    jackson_databind_version_map = [
         '2.15': '2.17.1',
         '2.17': '2.17.2',
         '2.19': '2.18.2',
+        '3.1': '2.18.2',
+        '3.3': '2.18.2',
+        '3.5': '2.20.1',
+        '3.6': '2.21.2',
+    ]
+    jackson_annotations_version_map = [
+        '2.15': '2.17.1',
+        '2.17': '2.17.2',
+        '2.19': '2.18.2',
+        '3.1': '2.18.2',
+        '3.3': '2.18.2',
+        '3.5': '2.20',
+        '3.6': '2.21',
     ]
 
     def osMinor = opensearch_version.split('\\.')[0..1].join('.')
-    resolvedJacksonVersion = jackson_version_map[osMinor]
-    if (resolvedJacksonVersion == null) throw new GradleException(
-        "No jackson-core version for OpenSearch ${opensearch_version} (minor ${osMinor}). " +
-        "Add the minor version key to jackson_version_map in build.gradle.")
+    resolvedJacksonDatabindVersion = jackson_databind_version_map[osMinor]
+    resolvedJacksonAnnotationsVersion = jackson_annotations_version_map[osMinor]
+    if (resolvedJacksonDatabindVersion == null || resolvedJacksonAnnotationsVersion == null) throw new GradleException(
+        "No jackson version for OpenSearch ${opensearch_version} (minor ${osMinor}). " +
+        "Add the minor version key to jackson_databind_version_map and " +
+        "jackson_annotations_version_map in build.gradle.")
 }
 
 repositories {
@@ -131,12 +162,12 @@ repositories {
 // ---------------------------------------------------------------------------
 task hideNonMatchingJacksonShas {
     doLast {
-        def jacksonVer = resolvedJacksonVersion
         def stash = file("${buildDir}/jackson-sha-stash")
         stash.mkdirs()
         fileTree('licenses').matching {
             include 'jackson-*-*.jar.sha1'
-            exclude "jackson-*-${jacksonVer}.jar.sha1"
+            exclude "jackson-databind-${resolvedJacksonDatabindVersion}.jar.sha1"
+            exclude "jackson-annotations-${resolvedJacksonAnnotationsVersion}.jar.sha1"
         }.each { f ->
             java.nio.file.Files.move(f.toPath(), stash.toPath().resolve(f.name))
         }
@@ -159,6 +190,28 @@ task restoreJacksonShas {
 tasks.named('dependencyLicenses').configure {
     dependsOn hideNonMatchingJacksonShas
     finalizedBy restoreJacksonShas
+}
+
+// ---------------------------------------------------------------------------
+// YAML REST tests resolve org.opensearch.test:framework, which can expose
+// OpenSearch patch-specific metadata conflicts under failOnVersionConflict().
+def openSearchYamlRestDependencyOverrides = [
+    '2.19.5': [
+        'com.google.errorprone:error_prone_annotations': '2.45.0',
+    ],
+    '3.5.0': [
+        'com.google.errorprone:error_prone_annotations': '2.45.0',
+    ],
+    '3.6.0': [
+        'com.google.errorprone:error_prone_annotations': '2.45.0',
+    ],
+]
+
+def yamlRestDependencyOverrides = openSearchYamlRestDependencyOverrides[opensearch_version] ?: [:]
+configurations.matching { it.name.startsWith('yamlRestTest') }.configureEach {
+    if (!yamlRestDependencyOverrides.isEmpty()) {
+        resolutionStrategy.force yamlRestDependencyOverrides.collect { module, version -> "${module}:${version}" }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -618,11 +671,11 @@ testingConventions.enabled = false
 }
 
 dependencies {
-    // Jackson — version auto-resolved from OpenSearch's jackson-core (B041).
-    implementation "com.fasterxml.jackson.core:jackson-databind:${resolvedJacksonVersion}"
-    implementation "com.fasterxml.jackson.core:jackson-annotations:${resolvedJacksonVersion}"
-    testImplementation "com.fasterxml.jackson.core:jackson-databind:${resolvedJacksonVersion}"
-    testImplementation "com.fasterxml.jackson.core:jackson-annotations:${resolvedJacksonVersion}"
+    // Jackson — versions auto-resolved to match OpenSearch's shipped Jackson (B041).
+    implementation "com.fasterxml.jackson.core:jackson-databind:${resolvedJacksonDatabindVersion}"
+    implementation "com.fasterxml.jackson.core:jackson-annotations:${resolvedJacksonAnnotationsVersion}"
+    testImplementation "com.fasterxml.jackson.core:jackson-databind:${resolvedJacksonDatabindVersion}"
+    testImplementation "com.fasterxml.jackson.core:jackson-annotations:${resolvedJacksonAnnotationsVersion}"
 
     // Lombok — compile-time only, not bundled in plugin zip
     compileOnly 'org.projectlombok:lombok:1.18.30'

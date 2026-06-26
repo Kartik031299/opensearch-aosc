@@ -14,11 +14,11 @@ import com.atlassian.opensearch.aosc.utils.IndexOperationUtils.MatchedLease;
 
 import org.opensearch.action.support.ActionFilters;
 import org.opensearch.action.support.HandledTransportAction;
-import org.opensearch.client.Client;
 import org.opensearch.common.inject.Inject;
 import org.opensearch.core.action.ActionListener;
 import org.opensearch.tasks.Task;
 import org.opensearch.transport.TransportService;
+import org.opensearch.transport.client.Client;
 
 import java.util.List;
 import java.util.Objects;

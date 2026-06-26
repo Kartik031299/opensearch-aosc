@@ -17,9 +17,9 @@ import com.atlassian.opensearch.aosc.utils.LC;
 
 import org.opensearch.action.bulk.BulkRequest;
 import org.opensearch.action.bulk.BulkResponse;
-import org.opensearch.client.Client;
 import org.opensearch.common.unit.TimeValue;
 import org.opensearch.threadpool.ThreadPool;
+import org.opensearch.transport.client.Client;
 
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;

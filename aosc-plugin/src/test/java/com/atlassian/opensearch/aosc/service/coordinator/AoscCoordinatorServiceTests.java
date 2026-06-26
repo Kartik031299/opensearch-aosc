@@ -13,10 +13,10 @@ import com.atlassian.opensearch.aosc.model.ShardProgressDocument;
 import com.atlassian.opensearch.aosc.model.phase.ShardPhase;
 import com.atlassian.opensearch.aosc.utils.AoscLogger;
 
-import org.opensearch.client.Client;
 import org.opensearch.cluster.service.ClusterService;
 import org.opensearch.test.OpenSearchTestCase;
 import org.opensearch.threadpool.ThreadPool;
+import org.opensearch.transport.client.Client;
 
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;

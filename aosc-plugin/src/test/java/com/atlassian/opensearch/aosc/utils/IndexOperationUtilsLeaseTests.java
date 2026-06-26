@@ -189,7 +189,7 @@ public class IndexOperationUtilsLeaseTests extends OpenSearchTestCase {
         );
         ShardPath shardPath = new ShardPath(false, tmp, tmp, shardId);
         RetentionLeases retentionLeases = new RetentionLeases(1L, 1L, Arrays.asList(leases));
-        return new ShardStats(routing, shardPath, new CommonStats(), null, null, new RetentionLeaseStats(retentionLeases));
+        return new ShardStats(routing, shardPath, new CommonStats(), null, null, new RetentionLeaseStats(retentionLeases), null);
     }
 
     private static ShardStats shardWithNullLeaseStats(ShardId shardId) {
@@ -201,7 +201,7 @@ public class IndexOperationUtilsLeaseTests extends OpenSearchTestCase {
             String.valueOf(shardId.id())
         );
         ShardPath shardPath = new ShardPath(false, tmp, tmp, shardId);
-        return new ShardStats(routing, shardPath, new CommonStats(), null, null, null);
+        return new ShardStats(routing, shardPath, new CommonStats(), null, null, null, null);
     }
 
     private static IndicesStatsResponse statsResponseFor(ShardStats... shards) {

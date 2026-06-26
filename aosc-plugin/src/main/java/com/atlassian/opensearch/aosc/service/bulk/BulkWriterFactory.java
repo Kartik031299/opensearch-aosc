@@ -13,9 +13,9 @@ import com.atlassian.opensearch.aosc.service.adaptive.AimdConfig;
 import com.atlassian.opensearch.aosc.service.adaptive.FixedBatchSizeController;
 import com.atlassian.opensearch.aosc.utils.AoscLogger;
 
-import org.opensearch.client.Client;
 import org.opensearch.common.settings.ClusterSettings;
 import org.opensearch.threadpool.ThreadPool;
+import org.opensearch.transport.client.Client;
 
 import java.util.Objects;
 

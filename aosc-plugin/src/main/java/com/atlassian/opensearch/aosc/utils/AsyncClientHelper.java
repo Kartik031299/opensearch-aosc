@@ -34,12 +34,12 @@ import org.opensearch.action.index.IndexResponse;
 import org.opensearch.action.search.SearchRequest;
 import org.opensearch.action.search.SearchResponse;
 import org.opensearch.action.support.RetryableAction;
-import org.opensearch.action.support.master.AcknowledgedResponse;
-import org.opensearch.client.Client;
+import org.opensearch.action.support.clustermanager.AcknowledgedResponse;
 import org.opensearch.common.unit.TimeValue;
 import org.opensearch.core.action.ActionListener;
 import org.opensearch.core.action.ActionResponse;
 import org.opensearch.threadpool.ThreadPool;
+import org.opensearch.transport.client.Client;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;

@@ -9,10 +9,10 @@ package com.atlassian.opensearch.aosc.service.worker;
 
 import com.atlassian.opensearch.aosc.utils.AoscLogger;
 
-import org.opensearch.client.Client;
 import org.opensearch.core.index.Index;
 import org.opensearch.core.index.shard.ShardId;
 import org.opensearch.test.OpenSearchTestCase;
+import org.opensearch.transport.client.Client;
 
 import static org.mockito.Mockito.mock;
 

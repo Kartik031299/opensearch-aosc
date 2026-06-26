@@ -312,7 +312,8 @@ public class BackfillEngine {
         /** Reads one source doc, applies transform, appends 0..N write ops to {@link #outQueue}. */
         private void buildIndexWriteOps(ScoreDoc scoreDoc) throws Exception {
             fieldsVisitor.reset();
-            searcher.getIndexReader().document(scoreDoc.doc, fieldsVisitor);
+            // Read this document's stored fields via the StoredFields accessor.
+            searcher.getIndexReader().storedFields().document(scoreDoc.doc, fieldsVisitor);
 
             String docId = fieldsVisitor.id();
             BytesReference sourceBytes = fieldsVisitor.source();

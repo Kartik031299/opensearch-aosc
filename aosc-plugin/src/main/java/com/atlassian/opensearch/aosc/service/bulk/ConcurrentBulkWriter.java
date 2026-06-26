@@ -11,9 +11,9 @@ import com.atlassian.opensearch.aosc.service.adaptive.BulkOutcome;
 import com.atlassian.opensearch.aosc.utils.AoscLogger;
 import com.atlassian.opensearch.aosc.utils.LC;
 
-import org.opensearch.client.Client;
 import org.opensearch.common.util.concurrent.FutureUtils;
 import org.opensearch.threadpool.ThreadPool;
+import org.opensearch.transport.client.Client;
 
 import java.util.ArrayList;
 import java.util.Objects;

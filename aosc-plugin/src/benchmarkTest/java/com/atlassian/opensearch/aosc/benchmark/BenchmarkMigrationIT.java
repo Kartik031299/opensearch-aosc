@@ -173,8 +173,9 @@ public class BenchmarkMigrationIT extends AoscBenchmarkBase {
         try {
             result.writeJson(outputDir);
             metrics.writeResults();
-        } catch (java.security.AccessControlException e) {
-            LOG.warning("Cannot write results to disk (security manager): " + e.getMessage());
+        } catch (SecurityException e) {
+            // A security policy may deny writing results to disk; treat that as non-fatal.
+            LOG.warning("Cannot write results to disk (denied by security policy): " + e.getMessage());
         }
 
         // Phase 7: Threshold check

@@ -69,7 +69,7 @@ public class MultiNodeReplayIT extends AoscIntegTestBase {
         SearchResponse searchResp = client().search(
             new SearchRequest(alias).source(new SearchSourceBuilder().query(QueryBuilders.matchAllQuery()).size(0))
         ).actionGet();
-        assertEquals("Alias should return target doc count", getDocCount(target), searchResp.getHits().getTotalHits().value);
+        assertEquals("Alias should return target doc count", getDocCount(target), searchResp.getHits().getTotalHits().value());
     }
 
     /**

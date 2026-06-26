@@ -12,11 +12,11 @@ import com.atlassian.opensearch.aosc.model.MigrationRequest;
 import com.atlassian.opensearch.aosc.model.MigrationRequestOptions;
 import com.atlassian.opensearch.aosc.transform.TransformFactory;
 
-import org.opensearch.client.Client;
 import org.opensearch.cluster.ClusterState;
 import org.opensearch.common.settings.ClusterSettings;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.test.OpenSearchTestCase;
+import org.opensearch.transport.client.Client;
 
 import java.util.HashSet;
 

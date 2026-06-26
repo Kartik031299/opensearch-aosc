@@ -7,9 +7,10 @@
  */
 package com.atlassian.opensearch.aosc.benchmark;
 
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.ParseException;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.hc.core5.http.io.entity.StringEntity;
 
 import org.opensearch.client.Request;
 import org.opensearch.client.RequestOptions;
@@ -176,7 +177,14 @@ public final class AoscTestUtils {
     // --- Internal helpers ---
 
     static Map<String, Object> responseAsMap(Response response) throws IOException {
-        String body = EntityUtils.toString(response.getEntity());
+        // EntityUtils.toString throws a checked ParseException; rethrow as IOException
+        // to keep this helper's signature stable for callers.
+        final String body;
+        try {
+            body = EntityUtils.toString(response.getEntity());
+        } catch (ParseException e) {
+            throw new IOException(e);
+        }
         return XContentHelper.convertToMap(XContentType.JSON.xContent(), body, false);
     }
 }
