@@ -133,6 +133,15 @@ The workflow files are split by the reason a workflow runs:
 
 ## Building Locally
 
+For OpenSearch 3.8, use JDK 21 and select Gradle 9.4.1 before building:
+
+```bash
+./scripts/set-gradle.sh 3.8.0
+./gradlew --no-daemon fastCheck yamlRestTest itTest bundlePlugin -PopensearchVersion=3.8.0
+```
+
+The ZIP is written to `aosc-plugin/build/distributions/`. Do not commit the locally changed wrapper; restore it with `./scripts/set-gradle.sh --reset` after validation.
+
 Build a ZIP for one OpenSearch minor:
 
 ```bash

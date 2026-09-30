@@ -130,9 +130,9 @@ npm run docs:build
 ```
 
 Gradle version: OpenSearch 2.15–3.6 build on the committed wrapper (Gradle 8.7). OpenSearch
-**3.7 requires Gradle 9.4.1** (its build-tools rejects older Gradle, and 2.x build-tools breaks
-on Gradle 9 — so no single wrapper serves both). Before building 3.7, run
-`./scripts/set-gradle.sh 3.7.0` (it points the wrapper at 9.4.1); `./scripts/set-gradle.sh --reset`
+**3.7–3.8 requires Gradle 9.4.1** (its build-tools rejects older Gradle, and 2.x build-tools breaks
+on Gradle 9 — so no single wrapper serves both). Before building 3.8, run
+`./scripts/set-gradle.sh 3.8.0` (it points the wrapper at 9.4.1); `./scripts/set-gradle.sh --reset`
 restores 8.7. CI does this per job automatically. Do not commit the flipped wrapper.
 
 Use `--no-daemon` for longer integration runs when debugging stale Gradle
