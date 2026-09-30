@@ -158,7 +158,7 @@ public class TransportStartMigrationAction extends TransportClusterManagerNodeAc
                 listener.onFailure(toException(unwrap(ex)));
                 return;
             }
-            AsyncUtils.bridgeToListener(coordinatorService.startMigration(request), listener);
+            AsyncUtils.bridgeToListener(coordinatorService.startMigration(request, ctx.deleteRoutingStrategy()), listener);
         });
     }
 

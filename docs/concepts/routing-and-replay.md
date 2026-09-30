@@ -1,6 +1,6 @@
 # Routing and Replay
 
-AOSC preserves document IDs and document routing during backfill and replayed index operations. Delete replay is more subtle because OpenSearch operation history does not record the routing key for deletes.
+AOSC preserves document IDs and document routing during backfill and replayed operations. OpenSearch 3.9 and later retain routing on delete history; earlier versions do not.
 
 This page explains the behavior AOSC relies on when an index uses custom routing or changes shard count.
 
@@ -26,9 +26,23 @@ Replay reads source operation history:
 | Operation | Routing available to AOSC | Target behavior |
 |-----------|---------------------------|-----------------|
 | Index/create | Yes | AOSC indexes the target document with the replayed routing value. |
-| Delete | No | AOSC chooses the safest delete strategy available for the source and target shard topology. |
+| Delete on OpenSearch 3.9+ | Yes, when supplied | AOSC issues one delete with the original routing value. |
+| Delete before OpenSearch 3.9 | No | AOSC uses the source and target shard topology. |
 
-`Translog.Index` includes routing. `Translog.Delete` does not. This is an OpenSearch limitation rather than an AOSC-specific encoding choice. The upstream feature request is tracked in [OpenSearch issue 20907](https://github.com/opensearch-project/OpenSearch/issues/20907).
+OpenSearch added `Translog.Delete.routing()` in [OpenSearch PR 22584](https://github.com/opensearch-project/OpenSearch/pull/22584). AOSC enables it only when every cluster node is 3.9 or later. The selected delete-routing strategy is fixed for the migration.
+
+## Delete Routing Strategies
+
+Status reports expose `delete_routing_strategy`:
+
+| Strategy | Selection | Behavior |
+|----------|-----------|----------|
+| `TRANSLOG_ROUTING` | New migration on an all-3.9+ cluster | One target delete using the recorded routing value. A missing value means normal `_id` routing. |
+| `SHARD_TOPOLOGY` | Pre-3.9, mixed-version cluster, or an older persisted migration | Existing same-shard, split fan-out, or unrouted bulk behavior. |
+
+The strategy is selected once when the start request is validated and is stored with the migration. It is not recalculated for an active migration. A migration started while the cluster contains a pre-3.9 node therefore keeps `SHARD_TOPOLOGY` after the rolling upgrade finishes; start a new migration after every node is on 3.9+ to use `TRANSLOG_ROUTING`.
+
+AOSC never treats a null routing value as a signal to fall back to fan-out, because null is the valid representation of an unrouted delete. Existing migration safety checks, such as rejecting source-primary relocation, continue to apply independently of the selected delete-routing strategy.
 
 ## Why Delete Replay Needs a Topology
 
@@ -40,7 +54,7 @@ That is the reason the shard-count relationship matters.
 
 ## Routing Modes
 
-AOSC detects a routing mode at migration start from the source and target index metadata.
+AOSC also records a shard routing mode from the source and target metadata. This mode describes the topology; it does not select the source of delete routing. The delete behavior in the following table applies when `delete_routing_strategy=SHARD_TOPOLOGY`.
 
 | Source to target shards | Mode | Delete replay behavior | Custom-routed deletes |
 |-------------------------|------|------------------------|-----------------------|
@@ -132,7 +146,7 @@ Example target settings for a `3 -> 12` split-style migration where the source i
 
 Use the source index's actual `index.number_of_routing_shards` value, not the source shard count. This setting is fixed at index creation time.
 
-## Why `BULK_API` Can Lose Deletes
+## Why Legacy `BULK_API` Can Lose Deletes
 
 Consider a custom-routed source document:
 
@@ -143,7 +157,7 @@ _routing = tenant-a
 
 During backfill, AOSC copies it to the target with `_routing=tenant-a`.
 
-If the source then receives a delete, OpenSearch records a `Translog.Delete` containing `doc-1`, but not `tenant-a`. In `BULK_API` mode, AOSC can only send:
+Before OpenSearch 3.9, the source records the deleted ID but not `tenant-a`. With `SHARD_TOPOLOGY` and `BULK_API`, AOSC can only send:
 
 ```text
 DELETE /target/_doc/doc-1
@@ -151,7 +165,7 @@ DELETE /target/_doc/doc-1
 
 OpenSearch routes that delete by hashing `doc-1`, not `tenant-a`. If those hash to different shards, the delete is a no-op on the target and the stale document remains.
 
-This is the main data-loss risk behind `accept_data_loss_if_custom_routing_is_used`.
+This is the risk behind `accept_data_loss_if_custom_routing_is_used` on legacy delete routing. OpenSearch 3.9+ records `tenant-a`, so `TRANSLOG_ROUTING` sends one correctly routed delete for any shard-count relationship.
 
 There is a second edge case: a client can send a delete with the wrong routing key. OpenSearch records a delete in the shard that received the request, but the original document remains on the shard selected by its real routing key. AOSC must replay what the source shard history says; it must not search the target by `_id` and delete every matching routed copy, because that would delete data that still exists in the source.
 
@@ -161,19 +175,19 @@ Some applications intentionally write the same `_id` to multiple routing keys so
 
 | Topology | Behavior |
 |----------|----------|
-| `SAME_SHARD` | Each source shard copy maps to the same target shard number. |
-| `SPLIT_SHARD` | Each source shard copy maps into that source shard's target shard group. Delete fan-out covers the group. |
-| `BULK_API` | Copies can collide on fewer target shards, and unrouted deletes can miss stale copies. |
+| `N -> N` (`SAME_SHARD`) | Each source-shard copy maps to the corresponding target shard. |
+| Compatible `N -> kN` (`SPLIT_SHARD`) | Each source-shard copy maps into that source shard's non-overlapping target group. Legacy delete fan-out covers the group. |
+| Other topology changes (`BULK_API`) | Different routing values can map same-ID copies to one target shard, where one copy overwrites another. `SHARD_TOPOLOGY` also adds the risk of unrouted deletes missing a surviving copy. |
 
 If your application depends on this pattern, avoid `BULK_API` migrations unless you have an application-specific repair or re-replication plan.
 
 `SPLIT_SHARD` preserves source-shard ownership, but it does not invent new application-level replicas. For example, if each source shard has one routed copy of a container document and you migrate from `N` to `2N` shards, AOSC preserves the `N` source copies in the correct target shard groups. It does not create `2N` routed copies. Applications that require one copy per target shard need their own re-replication or repair step after cutover.
 
-Shard-count changes that fall back to `BULK_API` are especially risky for container-replicated documents. Two routing keys that used to land on different source shards can land on the same target shard. Since `_id` uniqueness is enforced per shard, one copy can overwrite another during backfill. Later unrouted deletes can also miss the surviving copy. This can be silent because AOSC uses idempotent index operations.
+Shard-count changes remain risky for container-replicated documents even on OpenSearch 3.9+. Two routing keys that used to land on different source shards can land on the same target shard. Since `_id` uniqueness is enforced per shard, one copy can overwrite another during backfill. Exact delete routing fixes missed deletes; it cannot restore a copy already collapsed by an ID collision.
 
 ## Consent Gate
 
-AOSC currently requires `options.accept_data_loss_if_custom_routing_is_used=true` for every `BULK_API` topology. The gate is intentionally conservative: it is based on the source and target shard relationship, not a proof that every source document uses custom routing.
+AOSC requires `options.accept_data_loss_if_custom_routing_is_used=true` only for `SHARD_TOPOLOGY + BULK_API`. New migrations on an all-3.9+ cluster select `TRANSLOG_ROUTING` and do not require that risk acknowledgement for arbitrary shard-count changes. If the option is supplied anyway, it is accepted but has no effect on translog-routing replay.
 
 Use that option only after you have checked the source write path and accepted the possibility of stale custom-routed documents in the target.
 
@@ -183,7 +197,7 @@ Use this decision path before changing shard count:
 
 | Source index behavior | Recommended target shard count |
 |-----------------------|--------------------------------|
-| Default routing only | Any target shard count that meets your operational needs; `BULK_API` still requires explicit consent for unsupported topologies. |
-| Client-supplied `_routing` | Prefer `N -> N` or `N -> kN` where `k` is a power of 2. |
+| Default routing only | Any target shard count that meets your operational needs. `SHARD_TOPOLOGY + BULK_API` still requires explicit consent. |
+| Client-supplied `_routing` | On an all-3.9+ cluster, a new migration can use any shard-count topology with exact delete routing. Before 3.9 or during a mixed-version upgrade, prefer `N -> N` or a supported power-of-2 split. |
 | Container replication or same `_id` deliberately written with multiple routing keys | Prefer `N -> N`; use `SPLIT_SHARD` only with a post-cutover plan for any application-level re-replication requirement. |
 | Unknown routing behavior | Treat it as custom routing until the write path and mappings prove otherwise. |

@@ -37,7 +37,7 @@ POST /_plugins/_aosc/{index}/_start
 | `max_convergence_rounds_per_shard` | cluster default, currently `1000` | Replay/convergence round limit. |
 | `doc_count_tolerance` | `0` | Accepted source/target document count difference at cutover. |
 | `validation_query` | unset | Query DSL used to filter source and target counts during validation. |
-| `accept_data_loss_if_custom_routing_is_used` | `false` | Required for `BULK_API` routing topologies. In that mode, deletes are replayed without the original routing key and can miss custom-routed target documents. |
+| `accept_data_loss_if_custom_routing_is_used` | `false` | Required only for legacy `SHARD_TOPOLOGY + BULK_API` migrations. It is accepted but has no effect when `TRANSLOG_ROUTING` is selected. |
 | `target_ready_timeout_seconds` | cluster default, currently `14400` | Target readiness timeout. |
 | `remove_source_write_block_on_success` | cluster default, currently `false` | Remove the source write block after successful cutover. |
 | `transient_target_settings` | cluster default | Target settings applied during migration and restored later. |
@@ -87,6 +87,7 @@ Example response excerpt for a completed migration. Real responses include one `
   "alias": "my-index",
   "phase": "COMPLETED",
   "shard_routing_mode": "SAME_SHARD",
+  "delete_routing_strategy": "TRANSLOG_ROUTING",
   "start_time_millis": 1780991529496,
   "last_updated_millis": 1781030665647,
   "options": {
@@ -156,7 +157,8 @@ Common top-level fields:
 | `target_index` | Target index name. |
 | `alias` | Alias used for cutover. |
 | `phase` | Coordinator phase. |
-| `shard_routing_mode` | Routing strategy selected for shard movement, such as `SAME_SHARD` or `SPLIT_SHARD`. |
+| `shard_routing_mode` | Source/target shard topology: `SAME_SHARD`, `SPLIT_SHARD`, or `BULK_API`. |
+| `delete_routing_strategy` | Delete replay source: recorded routing (`TRANSLOG_ROUTING`) or legacy topology (`SHARD_TOPOLOGY`). Selected at migration start and not recalculated. |
 | `options` | Resolved migration options. |
 | `transform_script` | Transform script, if set. |
 | `shards` | Map of shard ID to shard progress. |

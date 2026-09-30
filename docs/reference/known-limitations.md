@@ -32,13 +32,13 @@ AOSC swaps an alias from source to target. Applications that read or write direc
 
 ## Custom Routing and Shard Count Changes Need Review
 
-AOSC preserves document IDs and routing values when indexing target documents. Replayed deletes are harder because OpenSearch `Translog.Delete` entries contain the deleted `_id` but not the routing key. The upstream feature request for recording delete routing is [OpenSearch issue 20907](https://github.com/opensearch-project/OpenSearch/issues/20907).
+AOSC preserves document IDs and routing values when indexing target documents. OpenSearch 3.9+ also records routing for deletes, so a new migration on an all-3.9+ cluster replays each delete once with its original routing value. Earlier or mixed-version clusters use the legacy shard-topology strategy. The strategy is fixed at migration start, so a migration started during a rolling upgrade remains on the legacy strategy after the upgrade finishes.
 
-This is safe in AOSC's `SAME_SHARD` and `SPLIT_SHARD` routing modes because AOSC can route the delete to the target shard or target shard group that can contain documents copied from the source shard. For source indices with more than one primary shard, `SPLIT_SHARD` requires the source and target to have the same `index.number_of_routing_shards`; AOSC rejects the migration at start if that precondition is not met. In `BULK_API` mode, a delete for a custom-routed document is sent without routing and OpenSearch routes it by `_id`. If the original document was routed by a different key, the delete can miss the copied target document and leave stale data.
+With the legacy strategy, `SAME_SHARD` and `SPLIT_SHARD` are safe because AOSC can route the delete to the target shard or target shard group that can contain documents copied from the source shard. For source indices with more than one primary shard, `SPLIT_SHARD` requires the source and target to have the same `index.number_of_routing_shards`. In `BULK_API`, a custom-routed delete is sent without routing and can miss the copied target document.
 
-`BULK_API` mode includes shrink, non-multiple shard-count changes, and non-power-of-2 expansions. AOSC requires explicit consent through `accept_data_loss_if_custom_routing_is_used` for these topologies. The consent gate is conservative: it is based on shard topology, not a full scan proving that custom routing is present.
+`BULK_API` mode includes shrink, non-multiple shard-count changes, and non-power-of-2 expansions. With legacy shard-topology delete routing, AOSC requires explicit consent through `accept_data_loss_if_custom_routing_is_used`. The option is not required when OpenSearch 3.9+ translog routing is active; if supplied, it is accepted but has no effect on delete replay.
 
-The highest-risk case is an application that writes the same `_id` with multiple routing keys, such as container or tenant-shard replication. In `BULK_API` topologies, target-shard collisions can cause one routed copy to overwrite another during backfill, and later unrouted deletes can miss stale target copies. This can be silent.
+Writing the same `_id` with multiple routing keys remains unsupported for topology changes where those keys can collide on one target shard. One copy can overwrite another during backfill. OpenSearch 3.9 exact delete routing prevents missed deletes but does not prevent this earlier collision.
 
 Review [Routing and Replay](../concepts/routing-and-replay) before setting `accept_data_loss_if_custom_routing_is_used`.
 

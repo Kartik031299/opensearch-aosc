@@ -9,9 +9,11 @@ package com.atlassian.opensearch.aosc.service.worker;
 
 import com.atlassian.opensearch.aosc.AoscSettings;
 import com.atlassian.opensearch.aosc.model.AoscMigrationsClusterState;
+import com.atlassian.opensearch.aosc.model.DeleteRoutingStrategy;
 import com.atlassian.opensearch.aosc.model.MigrationRequestOptions;
 import com.atlassian.opensearch.aosc.model.phase.CoordinatorPhase;
 import com.atlassian.opensearch.aosc.service.coordinator.AoscCoordinatorService;
+import com.atlassian.opensearch.aosc.service.worker.routing.DeleteOperationRouter;
 import com.atlassian.opensearch.aosc.transform.TransformFactory;
 import com.atlassian.opensearch.aosc.utils.AoscLogger;
 import com.atlassian.opensearch.aosc.utils.AsyncClientHelper;
@@ -261,15 +263,25 @@ public class AoscShardService implements ClusterStateListener, IndexEventListene
         IndexMetadata sourceMeta = state.metadata().index(entry.sourceIndex());
 
         MigrationRequestOptions options = entry.options();
+        DeleteRoutingStrategy deleteRoutingStrategy = Objects.requireNonNull(entry.deleteRoutingStrategy(), "deleteRoutingStrategy");
+        String[] syntheticRoutings = deleteRoutingStrategy == DeleteRoutingStrategy.SHARD_TOPOLOGY
+            ? SyntheticRoutingHelper.computeSyntheticRoutings(targetMeta)
+            : null;
+        DeleteOperationRouter deleteOperationRouter = new DeleteOperationRouter(
+            deleteRoutingStrategy,
+            entry.targetIndex(),
+            entry.routingMode(),
+            sourceMeta.getNumberOfShards(),
+            syntheticRoutings,
+            primaryShard.shardNum()
+        );
 
         return new ShardMigrationWorker(
             logger,
             entry.migrationId(),
             primaryShard,
             entry.targetIndex(),
-            sourceMeta.getNumberOfShards(),
-            entry.routingMode(),
-            SyntheticRoutingHelper.computeSyntheticRoutings(targetMeta),
+            deleteOperationRouter,
             transformFactory.create(entry.transformScript(), sourceMeta, targetMeta),
             options,
             clientHelper,

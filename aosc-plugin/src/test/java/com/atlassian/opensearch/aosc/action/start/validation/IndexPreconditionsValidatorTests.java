@@ -7,6 +7,7 @@
  */
 package com.atlassian.opensearch.aosc.action.start.validation;
 
+import com.atlassian.opensearch.aosc.model.DeleteRoutingStrategy;
 import com.atlassian.opensearch.aosc.model.MigrationRequest;
 import com.atlassian.opensearch.aosc.transform.TransformFactory;
 import com.atlassian.opensearch.aosc.utils.AsyncClientHelper;
@@ -131,7 +132,13 @@ public class IndexPreconditionsValidatorTests extends OpenSearchTestCase {
     public void testRejectsSplitShardRoutingNumShardsMismatch() {
         IndexMetadata src = buildMeta("src", 3, 3);
         IndexMetadata tgt = buildMeta("tgt", 12, 12);
-        List<String> errors = IndexPreconditionsValidator.validatePreconditions(healthyState(src, tgt), src, tgt, "my-alias");
+        List<String> errors = IndexPreconditionsValidator.validatePreconditions(
+            healthyState(src, tgt),
+            src,
+            tgt,
+            "my-alias",
+            DeleteRoutingStrategy.SHARD_TOPOLOGY
+        );
         assertEquals(1, errors.size());
         assertTrue(errors.get(0), errors.get(0).contains("incompatible [index.number_of_routing_shards]"));
         assertTrue(errors.get(0), errors.get(0).contains("source=3, target=12"));
@@ -141,14 +148,39 @@ public class IndexPreconditionsValidatorTests extends OpenSearchTestCase {
     public void testAllowsSplitShardRoutingNumShardsMatch() {
         IndexMetadata src = buildMeta("src", 3, 12);
         IndexMetadata tgt = buildMeta("tgt", 12, 12);
-        List<String> errors = IndexPreconditionsValidator.validatePreconditions(healthyState(src, tgt), src, tgt, "my-alias");
+        List<String> errors = IndexPreconditionsValidator.validatePreconditions(
+            healthyState(src, tgt),
+            src,
+            tgt,
+            "my-alias",
+            DeleteRoutingStrategy.SHARD_TOPOLOGY
+        );
         assertTrue("Expected compatible split routing metadata to pass, got: " + errors, errors.isEmpty());
+    }
+
+    public void testTranslogRoutingSkipsSplitRoutingNumShardsCheck() {
+        IndexMetadata src = buildMeta("src", 3, 3);
+        IndexMetadata tgt = buildMeta("tgt", 12, 12);
+        List<String> errors = IndexPreconditionsValidator.validatePreconditions(
+            healthyState(src, tgt),
+            src,
+            tgt,
+            "my-alias",
+            DeleteRoutingStrategy.TRANSLOG_ROUTING
+        );
+        assertTrue("Translog routing should not require a shared routing hash space: " + errors, errors.isEmpty());
     }
 
     public void testAllowsSingleSourceShardSplitWithDifferentRoutingNumShards() {
         IndexMetadata src = buildMeta("src", 1, 1);
         IndexMetadata tgt = buildMeta("tgt", 4, 4);
-        List<String> errors = IndexPreconditionsValidator.validatePreconditions(healthyState(src, tgt), src, tgt, "my-alias");
+        List<String> errors = IndexPreconditionsValidator.validatePreconditions(
+            healthyState(src, tgt),
+            src,
+            tgt,
+            "my-alias",
+            DeleteRoutingStrategy.SHARD_TOPOLOGY
+        );
         assertTrue("Single source shard fan-out should not require matching routing shard space, got: " + errors, errors.isEmpty());
     }
 }

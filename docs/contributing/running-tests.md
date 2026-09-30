@@ -4,7 +4,7 @@ Every command takes `-PopensearchVersion=<version>`, which selects the OpenSearc
 
 ## Test Matrix
 
-Source paths are under `aosc-plugin/src/` (shared code in `java/`, version-specific in `java-2x/`/`java-3x/`).
+Source paths are under `aosc-plugin/src/` (shared code in `java/`, major-version code in `java-2x/`/`java-3x/`, and delete-routing capability code in `java-translog-delete-pre39/`/`java-translog-delete-39plus/`).
 
 | Task | Source | Purpose |
 |------|--------|---------|
@@ -38,6 +38,19 @@ Run a single integration test:
 
 ```bash
 ./gradlew itTest --tests '*TransformScriptIT'
+```
+
+### Version-selected delete-routing tests
+
+Gradle compiles `java-translog-delete-39plus` sources only for OpenSearch 3.9 and later. Earlier jobs compile `java-translog-delete-pre39` instead. This applies to every source set, so `TranslogDeleteRoutingIT` is neither compiled nor discovered on older versions.
+
+Use the wrapper required by 3.9 before running the focused integration coverage:
+
+```bash
+./scripts/set-gradle.sh 3.9.0
+./gradlew --no-daemon itTest -PopensearchVersion=3.9.0 \
+  --tests com.atlassian.opensearch.aosc.TranslogDeleteRoutingIT
+./scripts/set-gradle.sh --reset
 ```
 
 ## Smoke Tests

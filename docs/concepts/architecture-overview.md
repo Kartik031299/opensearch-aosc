@@ -30,7 +30,7 @@ This view expands the control-plane mechanics: how the coordinator writes migrat
 
 Backfill reads source documents, applies the configured transform, and indexes target documents with the same ID and routing when routing is present.
 
-Replay reads source operation history through OpenSearch shard APIs. Index/create operations are transformed and indexed into the target. Delete operations are applied to the target according to the detected routing mode.
+Replay reads source operation history through OpenSearch shard APIs. Index/create operations are transformed and indexed into the target. Delete operations use either routing recorded in OpenSearch 3.9+ history or the legacy source/target topology strategy selected when the migration starts.
 
 ## Migration Lifecycle
 
@@ -54,7 +54,7 @@ Before accepting a migration, AOSC validates that:
 - Source and target index names are different.
 - The alias is valid for cutover.
 - The plugin is installed consistently on all nodes.
-- The target routing mode can be handled, or explicit consent has been provided for risky routing cases.
+- Delete replay can use recorded translog routing, or the legacy target topology can be handled with explicit consent where required.
 - The transform and validation query are valid enough to start.
 
 AOSC does not create the target index.

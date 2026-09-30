@@ -16,6 +16,7 @@ import com.atlassian.opensearch.aosc.action.status.GetMigrationStatusResponse;
 import com.atlassian.opensearch.aosc.action.update.UpdateShardMigrationStatusRequest;
 import com.atlassian.opensearch.aosc.action.update.UpdateShardMigrationStatusResponse;
 import com.atlassian.opensearch.aosc.model.AoscMigrationsClusterState;
+import com.atlassian.opensearch.aosc.model.DeleteRoutingStrategy;
 import com.atlassian.opensearch.aosc.model.MigrationDocument;
 import com.atlassian.opensearch.aosc.model.MigrationRequest;
 import com.atlassian.opensearch.aosc.model.MigrationRequestOptions;
@@ -158,10 +159,14 @@ public class AoscCoordinatorService implements ClusterStateApplier, Closeable {
      *
      * @return a future that completes with the migration response once the cluster state update is committed
      */
-    public CompletableFuture<StartMigrationResponse> startMigration(StartMigrationRequest request) {
+    public CompletableFuture<StartMigrationResponse> startMigration(
+        StartMigrationRequest request,
+        DeleteRoutingStrategy deleteRoutingStrategy
+    ) {
         CompletableFuture<StartMigrationResponse> future = new CompletableFuture<>();
         String migrationId = UUID.randomUUID().toString();
         MigrationRequest migrationRequest = request.body();
+        Objects.requireNonNull(deleteRoutingStrategy, "deleteRoutingStrategy");
         String sourceIndex = migrationRequest.getSourceIndex();
         String targetIndex = migrationRequest.getTargetIndex();
 
@@ -184,6 +189,9 @@ public class AoscCoordinatorService implements ClusterStateApplier, Closeable {
 
                 IndexMetadata sourceMeta = currentState.metadata().index(sourceIndex);
                 IndexMetadata targetMeta = currentState.metadata().index(targetIndex);
+                if (sourceMeta == null || targetMeta == null) {
+                    throw new IllegalArgumentException("Source and target indices must exist when the migration starts");
+                }
                 ShardRoutingMode routingMode = SyntheticRoutingHelper.detectRoutingMode(sourceMeta, targetMeta);
 
                 // Populate initial shard entries from the source index
@@ -211,6 +219,7 @@ public class AoscCoordinatorService implements ClusterStateApplier, Closeable {
                     .options(resolvedOptions)
                     .phase(CoordinatorPhase.INITIALIZING)
                     .routingMode(routingMode)
+                    .deleteRoutingStrategy(deleteRoutingStrategy)
                     .startTimeMillis(System.currentTimeMillis())
                     .shards(shards)
                     .build();

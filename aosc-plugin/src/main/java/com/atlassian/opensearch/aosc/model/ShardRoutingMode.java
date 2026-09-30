@@ -8,23 +8,17 @@
 package com.atlassian.opensearch.aosc.model;
 
 /**
- * Determines how replayed operations are routed to target shards during migration.
+ * Describes the source-to-target shard topology. {@link DeleteRoutingStrategy}
+ * independently selects whether replayed deletes use recorded routing or this topology.
  *
  * <ul>
  *   <li><b>SAME_SHARD</b> (N→N): Source and target have the same shard count.
- *       Each source shard's ops are sent directly to the corresponding target shard
- *       via transport action. Full fidelity — no routing ambiguity.</li>
- *   <li><b>SPLIT_SHARD</b> (N→kN, k is a power of 2): INDEX ops routed to the
- *       correct target shard via {@code OperationRouting.generateShardId()}.
- *       DELETE ops fan out to all k candidate target shards. All via transport.
- *       Only power-of-2 split factors are safe because OpenSearch computes
- *       {@code routingNumShards = numShards * 2^numSplits} — doubling the shard
- *       count preserves {@code routingNumShards}, ensuring the contiguous shard
- *       mapping holds across source and target.</li>
- *   <li><b>BULK_API</b> (N→M, non-power-of-2 multiple or non-multiple): All ops
- *       go via Bulk API. INDEX preserves routing. DELETE has no routing (best
- *       effort, documented data loss for custom-routed documents). Requires
- *       explicit opt-in via {@code accept_data_loss_if_custom_routing_is_used}.</li>
+ *       Legacy delete replay addresses the corresponding target shard.</li>
+ *   <li><b>SPLIT_SHARD</b> (N→kN, k is a power of 2): Legacy delete replay fans
+ *       out to the k candidate target shards when routing metadata is compatible.</li>
+ *   <li><b>BULK_API</b> (all other relationships): Legacy delete replay sends an
+ *       unrouted delete and requires explicit data-loss consent. Translog-routing
+ *       replay still sends one delete with its recorded routing value.</li>
  * </ul>
  */
 public enum ShardRoutingMode {

@@ -39,5 +39,5 @@ A manual workflow gives you full control but requires you to design backfill, re
 - The source can be stopped and `_reindex` is enough.
 - The migration is cross-cluster.
 - Alias-based cutover is not possible.
-- Custom routing plus shard changes cannot be validated safely.
+- Your custom-routing model cannot tolerate the documented same-ID collision or legacy delete-replay boundaries during a shard-count change.
 - You need a full dry-run mode or formal metrics export.

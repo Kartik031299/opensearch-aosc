@@ -17,7 +17,9 @@ AOSC `develop` builds BOTH OpenSearch lines from a single unified module
 `aosc-plugin` with version-specific source directories. Shared code lives in
 `src/*/java/`; files that differ between OpenSearch 2.x and 3.x live in
 `src/*/java-2x/` and `src/*/java-3x/`. Gradle selects the matching compat
-directory based on `-PopensearchVersion`.
+directory based on `-PopensearchVersion`. The mutually exclusive
+`java-translog-delete-pre39/` and `java-translog-delete-39plus/` capability
+directories isolate the `Translog.Delete.routing()` API added in 3.9.
 
 3.x packages: `org.opensearch.transport.client.*`,
 `action.support.clustermanager.*`, Java 21. 2.x packages:
@@ -30,6 +32,10 @@ mirrored in the other compat directory to keep behavior consistent. CI runs
 `scripts/check-compat-drift.sh` to enforce that non-excepted compat file
 pairs differ only in import/package lines.
 
+Capability overlays are intentionally different implementations of the same
+fully qualified class and are not drift pairs. Add version-specific tests to the
+matching capability directory so unsupported APIs are not compiled on older versions.
+
 Compat utilities that abstract version differences (use these instead of
 putting version-specific code in shared files):
 
@@ -38,6 +44,7 @@ putting version-specific code in shared files):
 - `OsTestCompat` — `ShardStats` constructor difference
 - `MockClientFactory` — mock `Client`/`AdminClient` creation for tests
 - `HttpCompat` — Apache HttpClient 4 vs 5 in smoke/benchmark tests
+- `DeleteRoutingAccessor` — compile-time boundary for delete routing before and after 3.9
 
 Common 3.x imports:
 
@@ -129,11 +136,11 @@ Use targeted validation while developing:
 npm run docs:build
 ```
 
-Gradle version: OpenSearch 2.15–3.6 build on the committed wrapper (Gradle 8.7). OpenSearch
-**3.7–3.8 requires Gradle 9.4.1** (its build-tools rejects older Gradle, and 2.x build-tools breaks
-on Gradle 9 — so no single wrapper serves both). Before building 3.8, run
-`./scripts/set-gradle.sh 3.8.0` (it points the wrapper at 9.4.1); `./scripts/set-gradle.sh --reset`
-restores 8.7. CI does this per job automatically. Do not commit the flipped wrapper.
+Gradle version: OpenSearch 2.15–3.6 builds on the committed wrapper (Gradle 8.7),
+3.7–3.8 requires Gradle 9.4.1, and 3.9 requires Gradle 9.7.1. Run
+`./scripts/set-gradle.sh <version>` before building these newer versions;
+`./scripts/set-gradle.sh --reset` restores 8.7. CI does this per job automatically.
+Do not commit the flipped wrapper.
 
 Use `--no-daemon` for longer integration runs when debugging stale Gradle
 workers:

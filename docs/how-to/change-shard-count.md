@@ -4,7 +4,7 @@ Use AOSC when you need to move data into a target index with a different shard c
 
 ## 1. Review Routing Risk
 
-Shard count changes are safest when AOSC can keep source-shard ownership unambiguous. AOSC detects one of these routing modes:
+Shard count changes are safest when AOSC can keep source-shard ownership unambiguous. AOSC always records one of these topology modes; the legacy guidance in the last column applies when the migration uses `SHARD_TOPOLOGY` delete replay:
 
 | Source to target shards | Mode | Guidance |
 |-------------------------|------|----------|
@@ -12,9 +12,11 @@ Shard count changes are safest when AOSC can keep source-shard ownership unambig
 | `N -> kN`, where `k` is a power of 2 | `SPLIT_SHARD` | Supported for custom routing when routing metadata is compatible; delete replay fans out within the target shard group. |
 | Shrink, non-multiple change, or non-power-of-2 expansion | `BULK_API` | Requires `accept_data_loss_if_custom_routing_is_used`; custom-routed deletes can leave stale target documents. |
 
+On an all-OpenSearch-3.9+ cluster, new migrations select `TRANSLOG_ROUTING`, replay each delete with its original routing value, and allow any shard-count relationship without the consent option. A migration started during a mixed-version rolling upgrade keeps `SHARD_TOPOLOGY` even after the upgrade finishes. Same-ID copies stored under multiple routing values remain unsupported when they collide on one target shard.
+
 Check the source index settings and application write path before proceeding. If the source uses tenant routing, container replication, or any client-supplied `_routing`, read [Routing and Replay](../concepts/routing-and-replay) before choosing the target shard count. That page includes the split fan-out proof and the reason `index.number_of_routing_shards` matters.
 
-For split-style migrations from a source index with more than one primary shard, check the source routing-shard value:
+If the migration can use legacy `SHARD_TOPOLOGY` replay, then a split-style migration from a source index with more than one primary shard must use the same routing-shard value on both indices:
 
 ```bash
 curl -s 'http://localhost:9200/my-index-v1/_settings' \
@@ -44,7 +46,7 @@ curl -X PUT 'http://localhost:9200/my-index-v2' \
   }'
 ```
 
-If the source has more than one primary shard and you are doing a power-of-two expansion, replace the example `number_of_routing_shards` with the source index's actual value. For a `3 -> 12` migration where the source has `index.number_of_routing_shards=12`, the target should use:
+For a legacy `SHARD_TOPOLOGY` power-of-two expansion from more than one source primary, replace the example `number_of_routing_shards` with the source index's actual value. For a `3 -> 12` migration where the source has `index.number_of_routing_shards=12`, the target should use:
 
 ```json
 {
@@ -66,7 +68,7 @@ curl -X POST 'http://localhost:9200/_plugins/_aosc/my-index-v1/_start' \
   }'
 ```
 
-If AOSC rejects the migration because of routing risk, review the reason before setting `accept_data_loss_if_custom_routing_is_used`. Do not use that option as a generic bypass.
+If a pre-3.9 or mixed-version cluster rejects the migration because of routing risk, review the reason before setting `accept_data_loss_if_custom_routing_is_used`. Do not use that option as a generic bypass.
 
 ```bash
 curl -X POST 'http://localhost:9200/_plugins/_aosc/my-index-v1/_start' \
@@ -85,7 +87,8 @@ Only set the option when you have accepted the possibility of stale target docum
 ## 4. Monitor
 
 ```bash
-curl -s 'http://localhost:9200/_plugins/_aosc/my-index-v1/_status' | jq '{phase, shards}'
+curl -s 'http://localhost:9200/_plugins/_aosc/my-index-v1/_status' \
+  | jq '{phase, shard_routing_mode, delete_routing_strategy, shards}'
 ```
 
 AOSC proceeds to cutover automatically after the coordinator and shard workers reach the required phases.

@@ -8,10 +8,10 @@
 package com.atlassian.opensearch.aosc.service.worker;
 
 import com.atlassian.opensearch.aosc.model.IndexDoc;
-import com.atlassian.opensearch.aosc.model.ShardRoutingMode;
 import com.atlassian.opensearch.aosc.service.bulk.BulkWriter;
 import com.atlassian.opensearch.aosc.service.bulk.ThreadSafeDocSource;
 import com.atlassian.opensearch.aosc.service.bulk.WriteOp;
+import com.atlassian.opensearch.aosc.service.worker.routing.DeleteOperationRouter;
 import com.atlassian.opensearch.aosc.transform.TransformFunction;
 import com.atlassian.opensearch.aosc.utils.AoscLogger;
 import com.atlassian.opensearch.aosc.utils.AsyncUtils;
@@ -86,14 +86,11 @@ public class TranslogReplayEngine {
     private final ShardHandle shardHandle;
     private final String targetIndex;
     private final TransformFunction transform;
-    private final ShardRoutingMode routingMode;
-    private final int sourceShardCount;
-    private final String[] syntheticRoutings;
+    private final DeleteOperationRouter deleteOperationRouter;
     private final StartCallback startCallback;
     private final ProgressCallback progressCallback;
     private final ThreadPool threadPool;
     private final AoscLogger logger;
-    private final int shardId;
 
     private final AtomicBoolean cancelled = new AtomicBoolean(false);
     private final AtomicBoolean started = new AtomicBoolean(false);
@@ -110,9 +107,7 @@ public class TranslogReplayEngine {
         ShardHandle shardHandle,
         String targetIndex,
         TransformFunction transform,
-        ShardRoutingMode routingMode,
-        int sourceShardCount,
-        String[] syntheticRoutings,
+        DeleteOperationRouter deleteOperationRouter,
         StartCallback startCallback,
         ProgressCallback progressCallback,
         ThreadPool threadPool
@@ -122,13 +117,10 @@ public class TranslogReplayEngine {
         this.shardHandle = Objects.requireNonNull(shardHandle, "shardHandle");
         this.targetIndex = Objects.requireNonNull(targetIndex, "targetIndex");
         this.transform = Objects.requireNonNull(transform, "transform");
-        this.routingMode = Objects.requireNonNull(routingMode, "routingMode");
-        this.sourceShardCount = sourceShardCount;
-        this.syntheticRoutings = syntheticRoutings;
+        this.deleteOperationRouter = Objects.requireNonNull(deleteOperationRouter, "deleteOperationRouter");
         this.startCallback = startCallback;
         this.progressCallback = progressCallback;
         this.threadPool = Objects.requireNonNull(threadPool, "threadPool");
-        this.shardId = shardHandle.shardNum();
         finishedFuture.whenComplete((r, e) -> {
             if (progressCallback != null) {
                 progressCallback.onProgress(
@@ -271,8 +263,7 @@ public class TranslogReplayEngine {
                 kv(LC.EVENT, "replay_range_internal_start"),
                 kv(LC.FROM_SEQ_NO, fromSeqNo),
                 kv(LC.TARGET_SEQ_NO, targetSeqNo),
-                kv(LC.RANGE, Math.max(0, targetSeqNo - fromSeqNo + 1)),
-                kv(LC.ROUTING_MODE, routingMode.toString())
+                kv(LC.RANGE, Math.max(0, targetSeqNo - fromSeqNo + 1))
             );
 
             // Empty range — nothing to replay
@@ -471,40 +462,9 @@ public class TranslogReplayEngine {
         }
 
         private void buildDeleteWriteOps(Translog.Delete deleteOp) {
-            switch (routingMode) {
-                case SAME_SHARD:
-                    String sameShardRouting = syntheticRoutings != null ? syntheticRoutings[shardId] : null;
-                    queue.add(
-                        WriteOp.of(
-                            new DeleteRequest(targetIndex, deleteOp.id()).routing(sameShardRouting),
-                            new ReplayBatchMetrics(1, 0, deleteOp.seqNo())
-                        )
-                    );
-                    break;
-                case SPLIT_SHARD:
-                    if (syntheticRoutings != null && sourceShardCount > 0) {
-                        int k = syntheticRoutings.length / sourceShardCount;
-                        for (int i = 0; i < k; i++) {
-                            int candidateShard = shardId * k + i;
-                            // Only the first fan-out request counts as 1 op replayed
-                            int opsReplayed = (i == 0) ? 1 : 0;
-                            queue.add(
-                                WriteOp.of(
-                                    new DeleteRequest(targetIndex, deleteOp.id()).routing(syntheticRoutings[candidateShard]),
-                                    new ReplayBatchMetrics(opsReplayed, 0, deleteOp.seqNo())
-                                )
-                            );
-                        }
-                    } else {
-                        queue.add(
-                            WriteOp.of(new DeleteRequest(targetIndex, deleteOp.id()), new ReplayBatchMetrics(1, 0, deleteOp.seqNo()))
-                        );
-                    }
-                    break;
-                case BULK_API:
-                default:
-                    queue.add(WriteOp.of(new DeleteRequest(targetIndex, deleteOp.id()), new ReplayBatchMetrics(1, 0, deleteOp.seqNo())));
-                    break;
+            List<DeleteRequest> requests = deleteOperationRouter.route(deleteOp);
+            for (int i = 0; i < requests.size(); i++) {
+                queue.add(WriteOp.of(requests.get(i), new ReplayBatchMetrics(i == 0 ? 1 : 0, 0, deleteOp.seqNo())));
             }
         }
     }

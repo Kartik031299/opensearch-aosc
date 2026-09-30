@@ -14,7 +14,7 @@ import org.opensearch.cluster.routing.OperationRouting;
 
 /**
  * Computes synthetic routing values that deterministically hash to
- * specific target shards. Used for routing-aware DELETE operations
+ * specific target shards. Used by legacy {@code SHARD_TOPOLOGY} delete replay
  * in SAME_SHARD and SPLIT_SHARD modes.
  *
  * <p>Each synthetic routing value, when passed through OpenSearch's routing

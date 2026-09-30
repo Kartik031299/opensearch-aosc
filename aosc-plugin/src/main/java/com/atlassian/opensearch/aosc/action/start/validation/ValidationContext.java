@@ -7,9 +7,11 @@
  */
 package com.atlassian.opensearch.aosc.action.start.validation;
 
+import com.atlassian.opensearch.aosc.model.DeleteRoutingStrategy;
 import com.atlassian.opensearch.aosc.model.MigrationRequest;
 import com.atlassian.opensearch.aosc.transform.TransformFactory;
 import com.atlassian.opensearch.aosc.utils.AsyncClientHelper;
+import com.atlassian.opensearch.aosc.utils.DeleteRoutingStrategyResolver;
 
 import org.opensearch.cluster.ClusterState;
 import org.opensearch.cluster.metadata.IndexMetadata;
@@ -25,6 +27,7 @@ public final class ValidationContext {
 
     private final MigrationRequest request;
     private final ClusterState clusterState;
+    private final DeleteRoutingStrategy deleteRoutingStrategy;
     private final IndexMetadata sourceMeta;
     private final IndexMetadata targetMeta;
     private final TransformFactory transformFactory;
@@ -42,6 +45,7 @@ public final class ValidationContext {
     ) {
         this.request = Objects.requireNonNull(request);
         this.clusterState = Objects.requireNonNull(clusterState);
+        this.deleteRoutingStrategy = DeleteRoutingStrategyResolver.resolve(clusterState);
         this.sourceMeta = sourceMeta;
         this.targetMeta = targetMeta;
         this.transformFactory = Objects.requireNonNull(transformFactory);
@@ -67,6 +71,10 @@ public final class ValidationContext {
 
     public ClusterState clusterState() {
         return clusterState;
+    }
+
+    public DeleteRoutingStrategy deleteRoutingStrategy() {
+        return deleteRoutingStrategy;
     }
 
     public IndexMetadata sourceMeta() {

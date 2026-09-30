@@ -18,6 +18,7 @@ Example shape, truncated to one shard:
   "alias": "my-index",
   "phase": "COMPLETED",
   "shard_routing_mode": "SAME_SHARD",
+  "delete_routing_strategy": "TRANSLOG_ROUTING",
   "options": {
     "convergence_threshold_per_shard": 1000,
     "max_convergence_rounds_per_shard": 1000
@@ -52,7 +53,8 @@ On large shard counts, the full `_status` response can be several MB because eve
 | Field | Meaning |
 |-------|---------|
 | `phase` | Coordinator phase. |
-| `shard_routing_mode` | Routing strategy selected for the migration. |
+| `shard_routing_mode` | Source/target shard topology: `SAME_SHARD`, `SPLIT_SHARD`, or `BULK_API`. |
+| `delete_routing_strategy` | Whether deletes use recorded routing (`TRANSLOG_ROUTING`) or legacy shard topology (`SHARD_TOPOLOGY`). This value is fixed at migration start. |
 | `cutover_context.*` | Document-count validation and alias-swap timing after completion starts. |
 | `error_message` | Coordinator-level failure message when present. |
 | `shards.*.phase` | Per-shard worker phase. |

@@ -7,6 +7,7 @@
  */
 package com.atlassian.opensearch.aosc.action.start.validation;
 
+import com.atlassian.opensearch.aosc.model.DeleteRoutingStrategy;
 import com.atlassian.opensearch.aosc.utils.SyntheticRoutingHelper;
 
 import org.opensearch.cluster.ClusterState;
@@ -22,13 +23,25 @@ public final class IndexPreconditionsValidator implements MigrationStartValidato
 
     @Override
     public void validate(ValidationContext ctx) {
-        List<String> errors = validatePreconditions(ctx.clusterState(), ctx.sourceMeta(), ctx.targetMeta(), ctx.request().getAlias());
+        List<String> errors = validatePreconditions(
+            ctx.clusterState(),
+            ctx.sourceMeta(),
+            ctx.targetMeta(),
+            ctx.request().getAlias(),
+            ctx.deleteRoutingStrategy()
+        );
         if (!errors.isEmpty()) {
             throw new IllegalStateException("Migration precondition check failed: " + String.join("; ", errors));
         }
     }
 
-    public static List<String> validatePreconditions(ClusterState state, IndexMetadata sourceMeta, IndexMetadata targetMeta, String alias) {
+    public static List<String> validatePreconditions(
+        ClusterState state,
+        IndexMetadata sourceMeta,
+        IndexMetadata targetMeta,
+        String alias,
+        DeleteRoutingStrategy deleteRoutingStrategy
+    ) {
         List<String> errors = new ArrayList<>();
 
         IndexRoutingTable sourceRouting = state.routingTable().index(sourceMeta.getIndex());
@@ -82,12 +95,13 @@ public final class IndexPreconditionsValidator implements MigrationStartValidato
             errors.add("alias [" + alias + "] conflicts with an existing concrete index of the same name");
         }
 
-        validateSplitShardRoutingPreconditions(sourceMeta, targetMeta, errors);
-
-        try {
-            SyntheticRoutingHelper.computeSyntheticRoutings(targetMeta);
-        } catch (IllegalStateException e) {
-            errors.add("synthetic routing computation failed for target index: " + e.getMessage());
+        if (deleteRoutingStrategy == DeleteRoutingStrategy.SHARD_TOPOLOGY) {
+            validateSplitShardRoutingPreconditions(sourceMeta, targetMeta, errors);
+            try {
+                SyntheticRoutingHelper.computeSyntheticRoutings(targetMeta);
+            } catch (IllegalStateException e) {
+                errors.add("synthetic routing computation failed for target index: " + e.getMessage());
+            }
         }
 
         return errors;

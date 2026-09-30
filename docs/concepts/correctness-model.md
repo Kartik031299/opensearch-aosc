@@ -20,15 +20,15 @@ Retention leases are used to keep required operation history available while wor
 
 ## Routing
 
-Backfill and replayed index operations preserve `_routing` when it is present. Delete operations require topology-specific handling because OpenSearch operation history records the deleted `_id` but not the routing key.
+Backfill and replayed index operations preserve `_routing` when it is present. OpenSearch 3.9+ also records routing for deletes. A new migration on an all-3.9+ cluster replays each delete with that recorded value; pre-3.9, mixed-version, and older persisted migrations use shard topology because their delete history may not contain routing.
 
-AOSC supports three routing modes:
+AOSC records a topology mode separately from its delete-routing strategy:
 
 | Mode | Topology | Correctness boundary |
 |------|----------|----------------------|
-| `SAME_SHARD` | Source and target have the same shard count. | Safe for custom routing because each source shard maps to the corresponding target shard. |
-| `SPLIT_SHARD` | Target shard count is a power-of-2 multiple of the source shard count. | Safe for custom routing because deletes fan out to the target shard group that can contain documents from the source shard. |
-| `BULK_API` | Shrink, non-multiple change, or non-power-of-2 expansion. | Deletes are routed by `_id`; custom-routed deletes can leave stale target documents. |
+| `SAME_SHARD` | Source and target have the same shard count. | Legacy replay can address the corresponding target shard. |
+| `SPLIT_SHARD` | Target shard count is a power-of-2 multiple of the source shard count. | Legacy replay can fan out within the source shard's target group when routing metadata is compatible. |
+| `BULK_API` | Shrink, non-multiple change, or non-power-of-2 expansion. | `TRANSLOG_ROUTING` uses the recorded value. Legacy `SHARD_TOPOLOGY` routes deletes by `_id` and can leave stale custom-routed documents. |
 
 See [Routing and Replay](./routing-and-replay) for the detailed model and the data-loss consent gate.
 

@@ -76,6 +76,7 @@ public class MigrationRequestOptions implements JacksonWriteable, JacksonToXCont
     @JsonProperty("validation_query")
     private Map<String, Object> validationQuery;
 
+    /** Required only for legacy shard-topology delete replay in BULK_API mode; otherwise ignored. */
     @JsonProperty("accept_data_loss_if_custom_routing_is_used")
     private Boolean acceptDataLossIfCustomRoutingIsUsed;
 
